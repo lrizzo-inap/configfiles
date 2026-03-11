@@ -71,7 +71,7 @@ dhcp_leases() {
 }
 
 # netstat -n -I IFACE -bdi on FreeBSD returns a single-interface line where:
-# field 6 = Ierrs, field 9 = Oerrs.
+# field 6 = Ierrs, field 10 = Oerrs.
 if_inerrors() {
   iface="$1"
   netstat -n -I "$iface" -bdi 2>/dev/null | awk 'NR==2 {print $6; found=1} END {if (!found) print 0}'
@@ -79,7 +79,7 @@ if_inerrors() {
 
 if_outerrors() {
   iface="$1"
-  netstat -n -I "$iface" -bdi 2>/dev/null | awk 'NR==2 {print $9; found=1} END {if (!found) print 0}'
+  netstat -n -I "$iface" -bdi 2>/dev/null | awk 'NR==2 {print $10; found=1} END {if (!found) print 0}'
 }
 
 gateways_json() {
