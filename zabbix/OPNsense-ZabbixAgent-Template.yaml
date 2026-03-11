@@ -183,10 +183,10 @@ zabbix_export:
               value: pf
           triggers:
             - uuid: 420202794b01436da16f3b14096a771a
-              expression: 'avg(/OPNsense Firewall by Zabbix agent/opnsense.pf.counter.dropped,5m)>{$OPNSENSE.PF.DROPPED.RATE.WARN}'
-              name: 'PF error packet rate is high'
+              expression: 'avg(/OPNsense Firewall by Zabbix agent/opnsense.pf.counter.dropped,5m)>{$OPNSENSE.PF.DROPPED.RATE.FLOOR} and avg(/OPNsense Firewall by Zabbix agent/opnsense.pf.counter.dropped,5m)>{$OPNSENSE.PF.DROPPED.SPIKE.FACTOR}*trendavg(/OPNsense Firewall by Zabbix agent/opnsense.pf.counter.dropped,1w)'
+              name: 'PF error packet spike detected'
               priority: WARNING
-              description: 'PF is discarding packets at an elevated sustained rate due to errors or resource constraints (malformed packets, state table issues, memory pressure, etc.). Investigate pfctl -si counters for the specific error type.'
+              description: 'The 5-minute average PF error packet rate is more than {$OPNSENSE.PF.DROPPED.SPIKE.FACTOR}x the 7-day trend baseline and above the minimum floor of {$OPNSENSE.PF.DROPPED.RATE.FLOOR} pps. This may indicate a new attack pattern, a network anomaly, or sudden infrastructure trouble. Run pfctl -si to identify which error counter is elevated.'
         - uuid: 4bc93d7f14f444f5993bf89a3bea38b7
           name: 'PF counter memory'
           type: ZABBIX_ACTIVE
@@ -637,9 +637,12 @@ zabbix_export:
         - macro: '{$OPNSENSE.OPENVPN.MIN}'
           value: '0'
           description: 'Minimum expected number of OpenVPN processes. Set per host.'
-        - macro: '{$OPNSENSE.PF.DROPPED.RATE.WARN}'
-          value: '50'
-          description: 'Warning threshold for sustained PF error packet rate in packets per second (5-minute average). Counts all pfctl -si error counters except match and synproxy.'
+        - macro: '{$OPNSENSE.PF.DROPPED.RATE.FLOOR}'
+          value: '2'
+          description: 'Minimum PF error packet rate (pps, 5-minute average) required before the spike detection trigger is evaluated. Prevents false positives when the 7-day baseline is near zero and a single stray packet would otherwise satisfy the multiplier condition.'
+        - macro: '{$OPNSENSE.PF.DROPPED.SPIKE.FACTOR}'
+          value: '20'
+          description: 'Multiplier applied to the 7-day trendavg baseline for PF error packet spike detection. The trigger fires when the 5-minute average rate exceeds this multiple of the weekly average. Raise on sites with highly variable normal error rates.'
         - macro: '{$OPNSENSE.PF.STATES.HIGH}'
           value: '90'
           description: 'High threshold for PF state table utilization in percent.'
