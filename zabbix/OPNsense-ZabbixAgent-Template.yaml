@@ -394,6 +394,26 @@ zabbix_export:
           tags:
             - tag: component
               value: memory
+        - uuid: e2f3a4b5c6d74e8f90a1b2c3d4e5f6a7
+          name: 'Web GUI SSL certificate days remaining'
+          type: ZABBIX_ACTIVE
+          key: opnsense.ssl.cert.days
+          delay: 1h
+          description: 'Days until the OPNsense web GUI SSL certificate expires. Returns -1 if the certificate cannot be read.'
+          tags:
+            - tag: component
+              value: ssl
+          triggers:
+            - uuid: f7a8b9c0d1e24f3a4b5c6d7e8f9a0b1c
+              expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)<{$OPNSENSE.SSL.CERT.HIGH} and last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)>=0'
+              name: 'Web GUI SSL certificate expires in less than {$OPNSENSE.SSL.CERT.HIGH} days'
+              priority: HIGH
+              description: 'The OPNsense web GUI SSL certificate will expire within the high threshold. Renew it promptly to avoid browser warnings and service disruption.'
+            - uuid: a1b2c3d4e5f6478b9c0d1e2f3a4b5c6d
+              expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)<{$OPNSENSE.SSL.CERT.WARN} and last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)>={$OPNSENSE.SSL.CERT.HIGH}'
+              name: 'Web GUI SSL certificate expires in less than {$OPNSENSE.SSL.CERT.WARN} days'
+              priority: WARNING
+              description: 'The OPNsense web GUI SSL certificate will expire within the warning threshold. Plan renewal.'
       discovery_rules:
         - uuid: 0be123bbd96d4d83b9a7fd19472f8e17
           name: 'Interface discovery'
@@ -632,6 +652,12 @@ zabbix_export:
         - macro: '{$OPNSENSE.PF.STATES.WARN}'
           value: '80'
           description: 'Warning threshold for PF state table utilization in percent.'
+        - macro: '{$OPNSENSE.SSL.CERT.HIGH}'
+          value: '14'
+          description: 'Days before SSL certificate expiry at which the HIGH trigger fires.'
+        - macro: '{$OPNSENSE.SSL.CERT.WARN}'
+          value: '30'
+          description: 'Days before SSL certificate expiry at which the WARNING trigger fires.'
         - macro: '{$OPNSENSE.VPN.IPSEC.MIN}'
           value: '0'
           description: 'Minimum expected number of established IPsec SAs. Set per host.'
