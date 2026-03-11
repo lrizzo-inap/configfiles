@@ -121,7 +121,7 @@ zabbix_export:
               name: 'CARP MASTER count below expected minimum'
               priority: AVERAGE
               description: 'The number of CARP interfaces in MASTER state is below the expected minimum for this host.'
-            - uuid: b2c3d4e5f6a7489b0c1d2e3f4a5b6c7d
+            - uuid: a324584a902a46a5a3262cc105347367
               expression: 'change(/OPNsense Firewall by Zabbix agent/opnsense.carp.master.count)<0'
               name: 'CARP MASTER count decreased (possible failover)'
               priority: HIGH
@@ -169,7 +169,7 @@ zabbix_export:
               name: 'OpenVPN process count below expected minimum'
               priority: WARNING
               description: 'Running OpenVPN process count is below the configured threshold.'
-        - uuid: d4e5f6a7b8c94ab1c2d3e4f5a6b7c8d9
+        - uuid: f5d605071e454f5cb866895ec2f266cc
           name: 'PF dropped packets rate'
           type: ZABBIX_ACTIVE
           key: opnsense.pf.counter.dropped
@@ -182,7 +182,7 @@ zabbix_export:
             - tag: component
               value: pf
           triggers:
-            - uuid: e5f6a7b8c9d04bc2d3e4f5a6b7c8d9ea
+            - uuid: 420202794b01436da16f3b14096a771a
               expression: 'avg(/OPNsense Firewall by Zabbix agent/opnsense.pf.counter.dropped,5m)>{$OPNSENSE.PF.DROPPED.RATE.WARN}'
               name: 'PF dropped packet rate is high'
               priority: WARNING
@@ -428,7 +428,7 @@ zabbix_export:
                   name: 'Interface {#IFNAME} input errors increased'
                   priority: WARNING
                   description: 'Input errors increased on interface {#IFNAME}.'
-            - uuid: f6a7b8c9d0e14cd3e4f5a6b7c8d9eafb
+            - uuid: 0fa2ec027cd84f6c94f1c62532c761d2
               name: 'Interface {#IFNAME} input drops'
               type: ZABBIX_ACTIVE
               key: 'opnsense.if.idrop[{#IFNAME}]'
@@ -438,7 +438,7 @@ zabbix_export:
                 - tag: interface
                   value: '{#IFNAME}'
               trigger_prototypes:
-                - uuid: a7b8c9d0e1f24de4f5a6b7c8d9eafb0c
+                - uuid: 38226cce674740a0afaf159021bd2aea
                   expression: 'change(/OPNsense Firewall by Zabbix agent/opnsense.if.idrop[{#IFNAME}])>{$OPNSENSE.IF.ERRORS.WARN}'
                   name: 'Interface {#IFNAME} input drops increased'
                   priority: WARNING
