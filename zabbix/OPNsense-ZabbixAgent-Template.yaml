@@ -13,6 +13,101 @@ zabbix_export:
         This template is intended to replace the generic FreeBSD template for OPNsense hosts.
         It keeps only the OS-level checks that are usually useful for a firewall appliance and
         adds OPNsense-specific checks for PF, gateways, CARP, VPN, DNS and DHCP.
+
+        REQUIREMENTS
+        ------------
+        - Zabbix agent installed via OPNsense plugin (Services → Zabbix Agent)
+        - "Enable sudo root permissions" enabled in the agent settings
+        - opnsense-zabbix.sh deployed to /usr/local/bin/ and executable
+        - opnsense-custom.conf deployed to /usr/local/etc/zabbix_agentd.conf.d/
+        - UserParameter entries from UserParameters-gui.conf added via the GUI
+          (Services → Zabbix Agent → Advanced → User Parameters)
+
+        THRESHOLD TUNING
+        ----------------
+        All thresholds are controlled by macros and can be overridden per host
+        without modifying the template. Key macros to review on first deployment:
+
+          {$OPNSENSE.CARP.MASTER.MIN}     — set to number of expected MASTER VIPs
+                                            on this node; 0 on non-HA hosts
+          {$OPNSENSE.VPN.IPSEC.MIN}       — set to expected established IPsec SA count
+          {$OPNSENSE.OPENVPN.MIN}         — set to expected OpenVPN process count
+          {$OPNSENSE.DHCP.LEASES.WARN}    — adjust to subnet capacity
+          {$OPNSENSE.MEM.AVAIL.MIN}       — raise on systems with Suricata or large
+                                            state tables (default: 200M)
+
+        MONITORED AREAS
+        ---------------
+        SYSTEM
+          agent.ping             — agent heartbeat; HIGH if unavailable
+          system.uptime          — WARNING if uptime < 10 min (recent reboot)
+
+        ICMP  (Zabbix server simple check, no agent required)
+          icmpping               — reachability; AVERAGE if down for 5 min
+          icmppingloss           — packet loss %; WARNING/HIGH thresholds
+          icmppingsec            — round-trip time; WARNING/HIGH thresholds
+
+        CPU
+          cpu.util.total         — calculated as 100 − idle (FreeBSD limitation);
+                                   WARNING at UTIL.WARN%, HIGH at UTIL.HIGH%
+
+        MEMORY
+          vm.memory.size[available]  — WARNING if below MEM.AVAIL.MIN
+
+        STORAGE
+          vfs.fs.size[/,pfree]       — AVERAGE if free space < FS.PFREE.MIN%
+          vfs.fs.size[/var,pfree]    — AVERAGE if free space < FS.PFREE.MIN%
+
+        CARP
+          opnsense.carp.master.count — AVERAGE if below CARP.MASTER.MIN;
+                                       HIGH on any decrease (failover)
+          opnsense.carp.backup.count — informational
+
+        PACKET FILTER — STATE TABLE
+          opnsense.pf.states.current   — raw state count
+          opnsense.pf.states.max       — configured hard limit (polled every 10 min)
+          opnsense.pf.states.percent   — utilization %; WARNING/HIGH thresholds;
+                                         plus exhaustion prediction via timeleft()
+
+        PACKET FILTER — ERROR COUNTERS
+          opnsense.pf.counter.memory       — HIGH on any increase
+          opnsense.pf.counter.state-limit  — HIGH on any increase
+          opnsense.pf.counter.dropped      — aggregate of all pfctl -si error
+                                             counters (excludes match, synproxy);
+                                             CHANGE_PER_SECOND → rate in pps;
+                                             spike trigger: avg(5m) > FLOOR AND
+                                             avg(5m) > SPIKE.FACTOR × trendavg(1w)
+
+        ROUTING
+          opnsense.route.default.present   — DISASTER if default route missing
+
+        DNS
+          opnsense.unbound.processes       — HIGH if no Unbound process for 5 min
+
+        VPN
+          opnsense.ipsec.established       — AVERAGE if below IPSEC.MIN
+          opnsense.openvpn.processes       — WARNING if below OPENVPN.MIN
+
+        DHCP
+          opnsense.dhcp.leases             — INFO if above DHCP.LEASES.WARN
+
+        SSL CERTIFICATE
+          opnsense.ssl.cert.days           — reads /var/etc/cert.pem;
+                                             WARNING < CERT.WARN days;
+                                             HIGH < CERT.HIGH days;
+                                             -1 if cert unreadable (no alert)
+
+        INTERFACES  (LLD via net.if.discovery, internal interfaces excluded)
+          net.if.in / net.if.out           — traffic in Bps
+          opnsense.if.inerrors             — WARNING/HIGH on counter increase
+          opnsense.if.idrop                — WARNING/HIGH on counter increase
+          opnsense.if.outerrors            — WARNING/HIGH on counter increase
+
+        GATEWAYS  (LLD via opnsense.gateway.discovery using configctl)
+          opnsense.gateway.delay           — RTT in ms; WARNING/HIGH thresholds
+          opnsense.gateway.loss            — loss %; WARNING/HIGH thresholds
+          opnsense.gateway.status          — string; AVERAGE on non-healthy state;
+                                             AVERAGE on flap (changecount within window)
       groups:
         - name: 'Templates/Network devices'
       items:
@@ -170,12 +265,12 @@ zabbix_export:
               priority: WARNING
               description: 'Running OpenVPN process count is below the configured threshold.'
         - uuid: f5d605071e454f5cb866895ec2f266cc
-          name: 'PF dropped packets rate'
+          name: 'PF error packet rate'
           type: ZABBIX_ACTIVE
           key: opnsense.pf.counter.dropped
           value_type: FLOAT
           units: pps
-          description: 'Rate of packets dropped by PF per second, derived from the cumulative pfctl dropped counter.'
+          description: 'Rate of packets discarded by PF per second, derived from the cumulative sum of all pfctl -si error counters (bad-offset, fragment, short, normalize, memory, bad-timestamp, congestion, ip-option, proto-cksum, state-mismatch, state-insert, state-limit, src-limit, map-failed). Excludes ''match'' (counts pass+block rule hits) and ''synproxy'' (proxy intercept, not a discard). CHANGE_PER_SECOND preprocessing converts the monotonic counter to a rate.'
           preprocessing:
             - type: CHANGE_PER_SECOND
           tags:
@@ -183,10 +278,10 @@ zabbix_export:
               value: pf
           triggers:
             - uuid: 420202794b01436da16f3b14096a771a
-              expression: 'avg(/OPNsense Firewall by Zabbix agent/opnsense.pf.counter.dropped,5m)>{$OPNSENSE.PF.DROPPED.RATE.WARN}'
-              name: 'PF dropped packet rate is high'
+              expression: 'avg(/OPNsense Firewall by Zabbix agent/opnsense.pf.counter.dropped,5m)>{$OPNSENSE.PF.DROPPED.RATE.FLOOR} and avg(/OPNsense Firewall by Zabbix agent/opnsense.pf.counter.dropped,5m)>{$OPNSENSE.PF.DROPPED.SPIKE.FACTOR}*trendavg(/OPNsense Firewall by Zabbix agent/opnsense.pf.counter.dropped,1w)'
+              name: 'PF error packet spike detected'
               priority: WARNING
-              description: 'PF is dropping packets at an elevated sustained rate. This may indicate a blocked attack, a misconfigured rule, or resource exhaustion.'
+              description: 'The 5-minute average PF error packet rate is more than {$OPNSENSE.PF.DROPPED.SPIKE.FACTOR}x the 7-day trend baseline and above the minimum floor of {$OPNSENSE.PF.DROPPED.RATE.FLOOR} pps. This may indicate a new attack pattern, a network anomaly, or sudden infrastructure trouble. Run pfctl -si to identify which error counter is elevated.'
         - uuid: 4bc93d7f14f444f5993bf89a3bea38b7
           name: 'PF counter memory'
           type: ZABBIX_ACTIVE
@@ -637,9 +732,12 @@ zabbix_export:
         - macro: '{$OPNSENSE.OPENVPN.MIN}'
           value: '0'
           description: 'Minimum expected number of OpenVPN processes. Set per host.'
-        - macro: '{$OPNSENSE.PF.DROPPED.RATE.WARN}'
-          value: '50'
-          description: 'Warning threshold for sustained PF dropped packet rate in packets per second (5-minute average).'
+        - macro: '{$OPNSENSE.PF.DROPPED.RATE.FLOOR}'
+          value: '2'
+          description: 'Minimum PF error packet rate (pps, 5-minute average) required before the spike detection trigger is evaluated. Prevents false positives when the 7-day baseline is near zero and a single stray packet would otherwise satisfy the multiplier condition.'
+        - macro: '{$OPNSENSE.PF.DROPPED.SPIKE.FACTOR}'
+          value: '20'
+          description: 'Multiplier applied to the 7-day trendavg baseline for PF error packet spike detection. The trigger fires when the 5-minute average rate exceeds this multiple of the weekly average. Raise on sites with highly variable normal error rates.'
         - macro: '{$OPNSENSE.PF.STATES.HIGH}'
           value: '90'
           description: 'High threshold for PF state table utilization in percent.'
