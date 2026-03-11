@@ -1,0 +1,554 @@
+zabbix_export:
+  version: '7.2'
+  template_groups:
+    - uuid: e8de1018593d405781501ddf86797808
+      name: 'Templates/Network devices'
+  templates:
+    - uuid: f2a4e599341c4d15affc7b3dee5ab161
+      template: 'OPNsense Firewall by Zabbix agent'
+      name: 'OPNsense Firewall by Zabbix agent'
+      description: |
+        Standalone OPNsense firewall template for Zabbix 7.2 using Zabbix agent UserParameters.
+        
+        This template is intended to replace the generic FreeBSD template for OPNsense hosts.
+        It keeps only the OS-level checks that are usually useful for a firewall appliance and
+        adds OPNsense-specific checks for PF, gateways, CARP, VPN, DNS and DHCP.
+      groups:
+        - name: 'Templates/Network devices'
+      items:
+        - uuid: cbc3a771058a465fb9ccae6cf3196144
+          name: 'Zabbix agent availability'
+          type: ZABBIX_ACTIVE
+          key: agent.ping
+          description: 'Agent heartbeat.'
+          tags:
+            - tag: component
+              value: system
+          triggers:
+            - uuid: 7aa3c0b8107545e89c2557937ec82f4f
+              expression: 'last(/OPNsense Firewall by Zabbix agent/agent.ping)=0'
+              name: 'Zabbix agent is unavailable'
+              priority: HIGH
+              description: 'No response from the Zabbix agent on the firewall.'
+        - uuid: 793c9a6b81544626bb293a64ca50762e
+          name: 'Zabbix agent version'
+          type: ZABBIX_ACTIVE
+          key: agent.version
+          delay: 1h
+          value_type: CHAR
+          description: 'Agent version string.'
+          tags:
+            - tag: component
+              value: system
+        - uuid: 762146c856b547cfa3a63fef07334cd0
+          name: 'ICMP ping'
+          type: SIMPLE
+          key: icmpping
+          delay: 30s
+          description: 'ICMP reachability to the firewall host.'
+          tags:
+            - tag: component
+              value: icmp
+          triggers:
+            - uuid: b7a641f3e91942df84772d7b476c72b6
+              expression: 'max(/OPNsense Firewall by Zabbix agent/icmpping,5m)=0'
+              name: 'Host is unavailable by ICMP'
+              priority: AVERAGE
+              description: 'The firewall host is not replying to ICMP.'
+        - uuid: f08596ea8e0147a4ae04c9704f1212e0
+          name: 'ICMP loss'
+          type: SIMPLE
+          key: icmppingloss
+          value_type: FLOAT
+          units: '%'
+          description: 'ICMP packet loss to the firewall host.'
+          tags:
+            - tag: component
+              value: icmp
+          triggers:
+            - uuid: b688cb0b67a54f42857ed3b6dbe2458f
+              expression: 'min(/OPNsense Firewall by Zabbix agent/icmppingloss,5m)>{$OPNSENSE.ICMP.LOSS.HIGH}'
+              name: 'ICMP packet loss to host is critically high'
+              priority: HIGH
+              description: 'Critical ICMP loss to the firewall host.'
+            - uuid: 8701f0c2aa82463c804579f5f071056e
+              expression: 'min(/OPNsense Firewall by Zabbix agent/icmppingloss,5m)>{$OPNSENSE.ICMP.LOSS.WARN}'
+              name: 'ICMP packet loss to host is high'
+              priority: WARNING
+              description: 'High ICMP loss to the firewall host.'
+        - uuid: 0ec970a6f98e48b58d2ebf98d74eb19e
+          name: 'ICMP response time'
+          type: SIMPLE
+          key: icmppingsec
+          value_type: FLOAT
+          units: s
+          description: 'ICMP response time to the firewall host in seconds.'
+          tags:
+            - tag: component
+              value: icmp
+          triggers:
+            - uuid: 9013dd7db64f46ca9efefc8cb7ffab5c
+              expression: 'avg(/OPNsense Firewall by Zabbix agent/icmppingsec,5m)>( {$OPNSENSE.ICMP.RTT.HIGH} / 1000 )'
+              name: 'ICMP response time to host is critically high'
+              priority: HIGH
+              description: 'Critical ICMP latency to the firewall host.'
+            - uuid: 830f2639d20e42158c2c569b2706ca2d
+              expression: 'avg(/OPNsense Firewall by Zabbix agent/icmppingsec,5m)>( {$OPNSENSE.ICMP.RTT.WARN} / 1000 )'
+              name: 'ICMP response time to host is high'
+              priority: WARNING
+              description: 'Elevated ICMP latency to the firewall host.'
+        - uuid: 2d397c04e46e4984b16358923bdf28fb
+          name: 'CARP BACKUP count'
+          type: ZABBIX_ACTIVE
+          key: opnsense.carp.backup.count
+          delay: 30s
+          description: 'Number of CARP interfaces currently in BACKUP state.'
+          tags:
+            - tag: component
+              value: carp
+        - uuid: b2eb364388934b458d42c14e98f69b48
+          name: 'CARP MASTER count'
+          type: ZABBIX_ACTIVE
+          key: opnsense.carp.master.count
+          delay: 30s
+          description: 'Number of CARP interfaces currently in MASTER state.'
+          tags:
+            - tag: component
+              value: carp
+          triggers:
+            - uuid: d26e92f8f5924178ae213ee49cf40066
+              expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.carp.master.count)<{$OPNSENSE.CARP.MASTER.MIN}'
+              name: 'CARP MASTER count below expected minimum'
+              priority: AVERAGE
+              description: 'The number of CARP interfaces in MASTER state is below the expected minimum for this host.'
+        - uuid: 8a70196da1574c68b07f66ecd7dafccb
+          name: 'DHCP lease count'
+          type: ZABBIX_ACTIVE
+          key: opnsense.dhcp.leases
+          delay: 5m
+          description: 'Count of leases found in the ISC DHCP lease file.'
+          tags:
+            - tag: component
+              value: dhcp
+          triggers:
+            - uuid: a43be172c01945d99d10055184d5e3e7
+              expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.dhcp.leases)>{$OPNSENSE.DHCP.LEASES.WARN}'
+              name: 'DHCP lease count is above warning threshold'
+              priority: INFO
+              description: 'Lease count is above the configured threshold; tune per site.'
+        - uuid: 5b4f233289ec493db7c0b5637ea21e8d
+          name: 'Established IPsec SAs'
+          type: ZABBIX_ACTIVE
+          key: opnsense.ipsec.established
+          description: 'Count of established IPsec Security Associations.'
+          tags:
+            - tag: component
+              value: vpn
+          triggers:
+            - uuid: 72d685e7243f457ba37948f77809935e
+              expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.ipsec.established)<{$OPNSENSE.VPN.IPSEC.MIN}'
+              name: 'IPsec established SA count below expected minimum'
+              priority: AVERAGE
+              description: 'Established IPsec SA count is below the configured threshold.'
+        - uuid: dcdb1648ed654a0a953ee5cbe8987e3c
+          name: 'OpenVPN process count'
+          type: ZABBIX_ACTIVE
+          key: opnsense.openvpn.processes
+          description: 'Count of running OpenVPN processes.'
+          tags:
+            - tag: component
+              value: vpn
+          triggers:
+            - uuid: fff4a0b963dc4a0690ce709dc92d57e2
+              expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.openvpn.processes)<{$OPNSENSE.OPENVPN.MIN}'
+              name: 'OpenVPN process count below expected minimum'
+              priority: WARNING
+              description: 'Running OpenVPN process count is below the configured threshold.'
+        - uuid: 4bc93d7f14f444f5993bf89a3bea38b7
+          name: 'PF counter memory'
+          type: ZABBIX_ACTIVE
+          key: opnsense.pf.counter.memory
+          description: 'PF counter for memory-related events.'
+          tags:
+            - tag: component
+              value: pf
+          triggers:
+            - uuid: 5030603c9563454a97f34b00f0fc62a1
+              expression: 'change(/OPNsense Firewall by Zabbix agent/opnsense.pf.counter.memory)>0'
+              name: 'PF memory counter increased'
+              priority: HIGH
+              description: 'PF reported a memory-related issue.'
+        - uuid: 836bdd3547c44c84907e358b1494bab6
+          name: 'PF counter state-limit'
+          type: ZABBIX_ACTIVE
+          key: opnsense.pf.counter.state-limit
+          description: 'PF counter for state-limit events.'
+          tags:
+            - tag: component
+              value: pf
+          triggers:
+            - uuid: f51ffa9c2c754ecb90eceb63ff9b98b3
+              expression: 'change(/OPNsense Firewall by Zabbix agent/opnsense.pf.counter.state-limit)>0'
+              name: 'PF state-limit counter increased'
+              priority: HIGH
+              description: 'PF denied state creation because of the configured state limit.'
+        - uuid: 7f3da553b19441eb9d8cd9355d5c05ed
+          name: 'PF current states'
+          type: ZABBIX_ACTIVE
+          key: opnsense.pf.states.current
+          description: 'Current number of entries in the PF state table.'
+          tags:
+            - tag: component
+              value: pf
+        - uuid: 7b3976adb4ea43dfa51d0145d15f869f
+          name: 'PF maximum states'
+          type: ZABBIX_ACTIVE
+          key: opnsense.pf.states.max
+          delay: 10m
+          description: 'Configured PF state table limit.'
+          tags:
+            - tag: component
+              value: pf
+        - uuid: 16344e72d0c24cc3bb47255e979fd0a9
+          name: 'PF state table utilization'
+          type: ZABBIX_ACTIVE
+          key: opnsense.pf.states.percent
+          value_type: FLOAT
+          units: '%'
+          description: 'PF state table utilization percentage.'
+          tags:
+            - tag: component
+              value: pf
+          triggers:
+            - uuid: 673185205b554b48bc849f423dd3a330
+              expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.pf.states.percent)>{$OPNSENSE.PF.STATES.HIGH}'
+              name: 'PF state table utilization is critically high'
+              priority: HIGH
+              description: 'Current PF state table utilization exceeded the high threshold.'
+            - uuid: acb6362b32c34ae7b4a3667041ef1998
+              expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.pf.states.percent)>{$OPNSENSE.PF.STATES.WARN}'
+              name: 'PF state table utilization is high'
+              priority: WARNING
+              description: 'Current PF state table utilization exceeded the warning threshold.'
+        - uuid: be5654c384b447108088186686e1a3db
+          name: 'Default route present'
+          type: ZABBIX_ACTIVE
+          key: opnsense.route.default.present
+          description: '1 if a default route exists, otherwise 0.'
+          tags:
+            - tag: component
+              value: routing
+          triggers:
+            - uuid: 7e650fcd2f9f455e91f1339658f62af7
+              expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.route.default.present)=0'
+              name: 'Default route missing'
+              priority: DISASTER
+              description: 'The firewall has no default route.'
+        - uuid: bd6d6fc0d044494dbbe345a496a4207f
+          name: 'Unbound process count'
+          type: ZABBIX_ACTIVE
+          key: opnsense.unbound.processes
+          description: 'Count of running Unbound processes.'
+          tags:
+            - tag: component
+              value: dns
+          triggers:
+            - uuid: 7ddb3f934d8b4f48a52043ac18fd2f85
+              expression: 'max(/OPNsense Firewall by Zabbix agent/opnsense.unbound.processes,5m)=0'
+              name: 'Unbound DNS is not running'
+              priority: HIGH
+              description: 'No Unbound process was found.'
+        - uuid: dc8d8dd4cf714071aac47f9d28985465
+          name: 'CPU utilization'
+          type: ZABBIX_ACTIVE
+          key: 'system.cpu.util[,system,avg1]'
+          value_type: FLOAT
+          units: '%'
+          description: 'Overall system CPU utilization.'
+          tags:
+            - tag: component
+              value: cpu
+          triggers:
+            - uuid: 4024eb3d4fa44f788b3d88e2a770e9e7
+              expression: 'avg(/OPNsense Firewall by Zabbix agent/system.cpu.util[,system,avg1],5m)>{$OPNSENSE.CPU.UTIL.HIGH}'
+              name: 'CPU utilization is critically high'
+              priority: HIGH
+              description: 'Sustained critical CPU usage on a firewall.'
+            - uuid: 7e53939374c94111bb367b6e8b85e0c6
+              expression: 'avg(/OPNsense Firewall by Zabbix agent/system.cpu.util[,system,avg1],5m)>{$OPNSENSE.CPU.UTIL.WARN}'
+              name: 'CPU utilization is high'
+              priority: WARNING
+              description: 'Sustained high CPU can indicate packet processing pressure, IPS load or VPN load.'
+        - uuid: 48742a7086944bb397dc4c0895faf312
+          name: 'System uptime'
+          type: ZABBIX_ACTIVE
+          key: system.uptime
+          units: uptime
+          description: 'Firewall uptime.'
+          tags:
+            - tag: component
+              value: system
+        - uuid: 58c00547d6364ddc9c009e702f6f6c3c
+          name: 'Root filesystem free'
+          type: ZABBIX_ACTIVE
+          key: 'vfs.fs.size[/,pfree]'
+          delay: 10m
+          value_type: FLOAT
+          units: '%'
+          description: 'Free space on /.'
+          tags:
+            - tag: component
+              value: storage
+          triggers:
+            - uuid: da35406955ff491c9d029a84ea678bf8
+              expression: 'last(/OPNsense Firewall by Zabbix agent/vfs.fs.size[/,pfree])<{$OPNSENSE.FS.PFREE.MIN}'
+              name: 'Root filesystem free space is low'
+              priority: AVERAGE
+              description: 'Low free space on the root filesystem.'
+        - uuid: b6a7c605aa6942928296bfdbd55b7d6e
+          name: '/var filesystem free'
+          type: ZABBIX_ACTIVE
+          key: 'vfs.fs.size[/var,pfree]'
+          delay: 10m
+          value_type: FLOAT
+          units: '%'
+          description: 'Free space on /var.'
+          tags:
+            - tag: component
+              value: storage
+          triggers:
+            - uuid: 92ef5f3101244dec9fc29a1735bfe7ab
+              expression: 'last(/OPNsense Firewall by Zabbix agent/vfs.fs.size[/var,pfree])<{$OPNSENSE.FS.PFREE.MIN}'
+              name: '/var filesystem free space is low'
+              priority: AVERAGE
+              description: 'Low free space on /var can affect logs, leases and service state.'
+        - uuid: 26f678a0714e4750b14b4bfdef2d06ad
+          name: 'Memory available'
+          type: ZABBIX_ACTIVE
+          key: 'vm.memory.size[available]'
+          units: B
+          description: 'Available memory reported by the guest OS.'
+          tags:
+            - tag: component
+              value: memory
+          triggers:
+            - uuid: c1c2953c980c40539defd9e1bfa56348
+              expression: 'last(/OPNsense Firewall by Zabbix agent/vm.memory.size[available])<{$OPNSENSE.MEM.AVAIL.MIN}'
+              name: 'Available memory is low'
+              priority: WARNING
+              description: 'Low available memory inside the OPNsense guest.'
+        - uuid: d1e9c483c47c4e599f6b1e41fb3a7b79
+          name: 'Memory used'
+          type: ZABBIX_ACTIVE
+          key: 'vm.memory.size[used]'
+          units: B
+          description: 'Used memory reported by the guest OS.'
+          tags:
+            - tag: component
+              value: memory
+      discovery_rules:
+        - uuid: 0be123bbd96d4d83b9a7fd19472f8e17
+          name: 'Interface discovery'
+          type: ZABBIX_ACTIVE
+          key: net.if.discovery
+          delay: 1h
+          filter:
+            conditions:
+              - macro: '{#IFNAME}'
+                value: '^(lo[0-9]*|pflog[0-9]*|pfsync[0-9]*|enc[0-9]*)$'
+                operator: NOT_MATCHES_REGEX
+          description: 'Reuse agent interface discovery to create appliance-relevant interface traffic and error items.'
+          item_prototypes:
+            - uuid: 73622a4f1fa044f78968408e7096646b
+              name: 'Interface {#IFNAME} inbound traffic'
+              type: ZABBIX_ACTIVE
+              key: 'net.if.in["{#IFNAME}",bytes]'
+              units: bps
+              tags:
+                - tag: component
+                  value: interface
+                - tag: interface
+                  value: '{#IFNAME}'
+            - uuid: fb5362b6843a4e1b8e2c032dde4b58ec
+              name: 'Interface {#IFNAME} outbound traffic'
+              type: ZABBIX_ACTIVE
+              key: 'net.if.out["{#IFNAME}",bytes]'
+              units: bps
+              tags:
+                - tag: component
+                  value: interface
+                - tag: interface
+                  value: '{#IFNAME}'
+            - uuid: 440ffc6ed70148c5980a64c71a318e31
+              name: 'Interface {#IFNAME} input errors'
+              type: ZABBIX_ACTIVE
+              key: 'opnsense.if.inerrors[{#IFNAME}]'
+              tags:
+                - tag: component
+                  value: interface
+                - tag: interface
+                  value: '{#IFNAME}'
+              trigger_prototypes:
+                - uuid: 99de48d24ca64d9786ce1e9e44ccf4ac
+                  expression: 'change(/OPNsense Firewall by Zabbix agent/opnsense.if.inerrors[{#IFNAME}])>{$OPNSENSE.IF.ERRORS.WARN}'
+                  name: 'Interface {#IFNAME} input errors increased'
+                  priority: WARNING
+                  description: 'Input errors increased on interface {#IFNAME}.'
+            - uuid: 5185f2fd436d4ecb86f61f8101655c33
+              name: 'Interface {#IFNAME} output errors'
+              type: ZABBIX_ACTIVE
+              key: 'opnsense.if.outerrors[{#IFNAME}]'
+              tags:
+                - tag: component
+                  value: interface
+                - tag: interface
+                  value: '{#IFNAME}'
+              trigger_prototypes:
+                - uuid: 39c1c71639b142139f45cc54ca4643db
+                  expression: 'change(/OPNsense Firewall by Zabbix agent/opnsense.if.outerrors[{#IFNAME}])>{$OPNSENSE.IF.ERRORS.WARN}'
+                  name: 'Interface {#IFNAME} output errors increased'
+                  priority: WARNING
+                  description: 'Output errors increased on interface {#IFNAME}.'
+          trigger_prototypes:
+            - uuid: 4789d58d791f43c295b3e5e16bd97a16
+              expression: 'change(/OPNsense Firewall by Zabbix agent/opnsense.if.inerrors[{#IFNAME}])>{$OPNSENSE.IF.ERRORS.HIGH} or change(/OPNsense Firewall by Zabbix agent/opnsense.if.outerrors[{#IFNAME}])>{$OPNSENSE.IF.ERRORS.HIGH}'
+              name: 'Interface {#IFNAME} errors increased sharply'
+              priority: HIGH
+              description: 'A sharp increase in interface errors was detected on {#IFNAME}.'
+        - uuid: 605c5ab08c4743f09077614f99378231
+          name: 'Gateway discovery'
+          type: ZABBIX_ACTIVE
+          key: opnsense.gateway.discovery
+          delay: 15m
+          description: 'Discover gateways from OPNsense backend command configctl interface gateways status.'
+          item_prototypes:
+            - uuid: d6479ac0089e4ca0aa06f4e415315639
+              name: 'Gateway {#GWNAME} RTT'
+              type: ZABBIX_ACTIVE
+              key: 'opnsense.gateway.delay[{#GWNAME}]'
+              value_type: FLOAT
+              units: ms
+              tags:
+                - tag: component
+                  value: gateway
+                - tag: gateway
+                  value: '{#GWNAME}'
+              trigger_prototypes:
+                - uuid: 6a2688ca47e0402f8315e19f4100065e
+                  expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.gateway.delay[{#GWNAME}])>{$OPNSENSE.GW.RTT.HIGH}'
+                  name: 'Gateway {#GWNAME} RTT is critically high'
+                  priority: HIGH
+                  description: 'Round-trip delay exceeded the high threshold.'
+                - uuid: 173e052053f14c2197ebc76a0d2ae977
+                  expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.gateway.delay[{#GWNAME}])>{$OPNSENSE.GW.RTT.WARN}'
+                  name: 'Gateway {#GWNAME} RTT is high'
+                  priority: WARNING
+                  description: 'Round-trip delay exceeded the warning threshold.'
+            - uuid: 64dd1a5f2ff04904934ae72f8f74e09a
+              name: 'Gateway {#GWNAME} packet loss'
+              type: ZABBIX_ACTIVE
+              key: 'opnsense.gateway.loss[{#GWNAME}]'
+              value_type: FLOAT
+              units: '%'
+              tags:
+                - tag: component
+                  value: gateway
+                - tag: gateway
+                  value: '{#GWNAME}'
+              trigger_prototypes:
+                - uuid: 1b818e4d983e4e3186b19a577bda28f4
+                  expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.gateway.loss[{#GWNAME}])>{$OPNSENSE.GW.LOSS.HIGH}'
+                  name: 'Gateway {#GWNAME} packet loss is critically high'
+                  priority: HIGH
+                  description: 'Packet loss exceeded the high threshold.'
+                - uuid: 0530a2b04dd84084a6fbab3c4f8585be
+                  expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.gateway.loss[{#GWNAME}])>{$OPNSENSE.GW.LOSS.WARN}'
+                  name: 'Gateway {#GWNAME} packet loss is high'
+                  priority: WARNING
+                  description: 'Packet loss exceeded the warning threshold.'
+            - uuid: 6b4a51a5ef464e9bb364296334e1c306
+              name: 'Gateway {#GWNAME} status'
+              type: ZABBIX_ACTIVE
+              key: 'opnsense.gateway.status[{#GWNAME}]'
+              value_type: CHAR
+              tags:
+                - tag: component
+                  value: gateway
+                - tag: gateway
+                  value: '{#GWNAME}'
+              trigger_prototypes:
+                - uuid: c4f6e17d2f9b4dea90a95b52f086e0fd
+                  expression: 'find(/OPNsense Firewall by Zabbix agent/opnsense.gateway.status[{#GWNAME}],,"regexp","(down|offline|loss|delay)")=1'
+                  name: 'Gateway {#GWNAME} status is not healthy'
+                  priority: AVERAGE
+                  description: 'Gateway status string indicates a non-healthy state.'
+      tags:
+        - tag: application
+          value: network
+        - tag: class
+          value: firewall
+        - tag: target
+          value: opnsense
+        - tag: vendor
+          value: Deciso
+      macros:
+        - macro: '{$OPNSENSE.CARP.MASTER.MIN}'
+          value: '0'
+          description: 'Minimum expected number of CARP MASTER interfaces. Set to 0 on non-HA hosts.'
+        - macro: '{$OPNSENSE.CPU.UTIL.HIGH}'
+          value: '95'
+          description: 'High threshold for CPU utilization.'
+        - macro: '{$OPNSENSE.CPU.UTIL.WARN}'
+          value: '80'
+          description: 'Warning threshold for CPU utilization.'
+        - macro: '{$OPNSENSE.DHCP.LEASES.WARN}'
+          value: '200'
+          description: 'Warning threshold for DHCP lease count; adjust to your subnet sizes.'
+        - macro: '{$OPNSENSE.FS.PFREE.MIN}'
+          value: '10'
+          description: 'Minimum free space percentage for / and /var.'
+        - macro: '{$OPNSENSE.GW.LOSS.HIGH}'
+          value: '20'
+          description: 'High threshold for gateway packet loss in percent.'
+        - macro: '{$OPNSENSE.GW.LOSS.WARN}'
+          value: '5'
+          description: 'Warning threshold for gateway packet loss in percent.'
+        - macro: '{$OPNSENSE.GW.RTT.HIGH}'
+          value: '300'
+          description: 'High threshold for gateway RTT in ms.'
+        - macro: '{$OPNSENSE.GW.RTT.WARN}'
+          value: '150'
+          description: 'Warning threshold for gateway RTT in ms.'
+        - macro: '{$OPNSENSE.ICMP.LOSS.HIGH}'
+          value: '60'
+          description: 'High threshold for ICMP packet loss to the firewall host.'
+        - macro: '{$OPNSENSE.ICMP.LOSS.WARN}'
+          value: '20'
+          description: 'Warning threshold for ICMP packet loss to the firewall host.'
+        - macro: '{$OPNSENSE.ICMP.RTT.HIGH}'
+          value: '500'
+          description: 'High threshold for ICMP RTT to the firewall host in ms.'
+        - macro: '{$OPNSENSE.ICMP.RTT.WARN}'
+          value: '150'
+          description: 'Warning threshold for ICMP RTT to the firewall host in ms.'
+        - macro: '{$OPNSENSE.IF.ERRORS.HIGH}'
+          value: '100'
+          description: 'High threshold for interface error increase per check interval.'
+        - macro: '{$OPNSENSE.IF.ERRORS.WARN}'
+          value: '10'
+          description: 'Warning threshold for interface error increase per check interval.'
+        - macro: '{$OPNSENSE.MEM.AVAIL.MIN}'
+          value: 200M
+          description: 'Minimum available memory before alerting.'
+        - macro: '{$OPNSENSE.OPENVPN.MIN}'
+          value: '0'
+          description: 'Minimum expected number of OpenVPN processes. Set per host.'
+        - macro: '{$OPNSENSE.PF.STATES.HIGH}'
+          value: '90'
+          description: 'High threshold for PF state table utilization in percent.'
+        - macro: '{$OPNSENSE.PF.STATES.WARN}'
+          value: '80'
+          description: 'Warning threshold for PF state table utilization in percent.'
+        - macro: '{$OPNSENSE.VPN.IPSEC.MIN}'
+          value: '0'
+          description: 'Minimum expected number of established IPsec SAs. Set per host.'
