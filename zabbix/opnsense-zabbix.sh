@@ -153,6 +153,17 @@ $data
 EOF
 }
 
+ssl_cert_days_remaining() {
+  certfile="${1:-/var/etc/cert.pem}"
+  [ -r "$certfile" ] || { echo -1; return; }
+  enddate="$(openssl x509 -enddate -noout -in "$certfile" 2>/dev/null | cut -d= -f2)"
+  [ -z "$enddate" ] && { echo -1; return; }
+  end_epoch="$(date -j -f "%b %d %T %Y %Z" "$enddate" "+%s" 2>/dev/null)"
+  [ -z "$end_epoch" ] && { echo -1; return; }
+  now_epoch="$(date +%s)"
+  echo $(( (end_epoch - now_epoch) / 86400 ))
+}
+
 cmd="$1"
 shift 2>/dev/null || true
 
@@ -179,6 +190,8 @@ case "$cmd" in
 
   gateway_discovery) gateway_discovery ;;
   gateway_metric) gateway_metric "$@" ;;
+
+  ssl_cert_days_remaining) ssl_cert_days_remaining "$@" ;;
   *)
     echo "ZBX_NOTSUPPORTED"
     exit 1
