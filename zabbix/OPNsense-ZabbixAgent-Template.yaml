@@ -13,6 +13,101 @@ zabbix_export:
         This template is intended to replace the generic FreeBSD template for OPNsense hosts.
         It keeps only the OS-level checks that are usually useful for a firewall appliance and
         adds OPNsense-specific checks for PF, gateways, CARP, VPN, DNS and DHCP.
+
+        REQUIREMENTS
+        ------------
+        - Zabbix agent installed via OPNsense plugin (Services → Zabbix Agent)
+        - "Enable sudo root permissions" enabled in the agent settings
+        - opnsense-zabbix.sh deployed to /usr/local/bin/ and executable
+        - opnsense-custom.conf deployed to /usr/local/etc/zabbix_agentd.conf.d/
+        - UserParameter entries from UserParameters-gui.conf added via the GUI
+          (Services → Zabbix Agent → Advanced → User Parameters)
+
+        THRESHOLD TUNING
+        ----------------
+        All thresholds are controlled by macros and can be overridden per host
+        without modifying the template. Key macros to review on first deployment:
+
+          {$OPNSENSE.CARP.MASTER.MIN}     — set to number of expected MASTER VIPs
+                                            on this node; 0 on non-HA hosts
+          {$OPNSENSE.VPN.IPSEC.MIN}       — set to expected established IPsec SA count
+          {$OPNSENSE.OPENVPN.MIN}         — set to expected OpenVPN process count
+          {$OPNSENSE.DHCP.LEASES.WARN}    — adjust to subnet capacity
+          {$OPNSENSE.MEM.AVAIL.MIN}       — raise on systems with Suricata or large
+                                            state tables (default: 200M)
+
+        MONITORED AREAS
+        ---------------
+        SYSTEM
+          agent.ping             — agent heartbeat; HIGH if unavailable
+          system.uptime          — WARNING if uptime < 10 min (recent reboot)
+
+        ICMP  (Zabbix server simple check, no agent required)
+          icmpping               — reachability; AVERAGE if down for 5 min
+          icmppingloss           — packet loss %; WARNING/HIGH thresholds
+          icmppingsec            — round-trip time; WARNING/HIGH thresholds
+
+        CPU
+          cpu.util.total         — calculated as 100 − idle (FreeBSD limitation);
+                                   WARNING at UTIL.WARN%, HIGH at UTIL.HIGH%
+
+        MEMORY
+          vm.memory.size[available]  — WARNING if below MEM.AVAIL.MIN
+
+        STORAGE
+          vfs.fs.size[/,pfree]       — AVERAGE if free space < FS.PFREE.MIN%
+          vfs.fs.size[/var,pfree]    — AVERAGE if free space < FS.PFREE.MIN%
+
+        CARP
+          opnsense.carp.master.count — AVERAGE if below CARP.MASTER.MIN;
+                                       HIGH on any decrease (failover)
+          opnsense.carp.backup.count — informational
+
+        PACKET FILTER — STATE TABLE
+          opnsense.pf.states.current   — raw state count
+          opnsense.pf.states.max       — configured hard limit (polled every 10 min)
+          opnsense.pf.states.percent   — utilization %; WARNING/HIGH thresholds;
+                                         plus exhaustion prediction via timeleft()
+
+        PACKET FILTER — ERROR COUNTERS
+          opnsense.pf.counter.memory       — HIGH on any increase
+          opnsense.pf.counter.state-limit  — HIGH on any increase
+          opnsense.pf.counter.dropped      — aggregate of all pfctl -si error
+                                             counters (excludes match, synproxy);
+                                             CHANGE_PER_SECOND → rate in pps;
+                                             spike trigger: avg(5m) > FLOOR AND
+                                             avg(5m) > SPIKE.FACTOR × trendavg(1w)
+
+        ROUTING
+          opnsense.route.default.present   — DISASTER if default route missing
+
+        DNS
+          opnsense.unbound.processes       — HIGH if no Unbound process for 5 min
+
+        VPN
+          opnsense.ipsec.established       — AVERAGE if below IPSEC.MIN
+          opnsense.openvpn.processes       — WARNING if below OPENVPN.MIN
+
+        DHCP
+          opnsense.dhcp.leases             — INFO if above DHCP.LEASES.WARN
+
+        SSL CERTIFICATE
+          opnsense.ssl.cert.days           — reads /var/etc/cert.pem;
+                                             WARNING < CERT.WARN days;
+                                             HIGH < CERT.HIGH days;
+                                             -1 if cert unreadable (no alert)
+
+        INTERFACES  (LLD via net.if.discovery, internal interfaces excluded)
+          net.if.in / net.if.out           — traffic in Bps
+          opnsense.if.inerrors             — WARNING/HIGH on counter increase
+          opnsense.if.idrop                — WARNING/HIGH on counter increase
+          opnsense.if.outerrors            — WARNING/HIGH on counter increase
+
+        GATEWAYS  (LLD via opnsense.gateway.discovery using configctl)
+          opnsense.gateway.delay           — RTT in ms; WARNING/HIGH thresholds
+          opnsense.gateway.loss            — loss %; WARNING/HIGH thresholds
+          opnsense.gateway.status          — string; AVERAGE on non-healthy state;
+                                             AVERAGE on flap (changecount within window)
       groups:
         - name: 'Templates/Network devices'
       items:
