@@ -286,24 +286,37 @@ zabbix_export:
               name: 'Unbound DNS is not running'
               priority: HIGH
               description: 'No Unbound process was found.'
+        - uuid: 253d7d4ba54d4eb7ac5406a9f0b7873a
+          name: 'CPU idle utilization'
+          type: ZABBIX_ACTIVE
+          key: 'system.cpu.util[,idle,avg1]'
+          value_type: FLOAT
+          history: 1h
+          trends: 365d
+          description: 'CPU idle time. Stored as a dependency for the total CPU utilization calculated item; not intended for direct alerting.'
+          tags:
+            - tag: component
+              value: cpu
         - uuid: dc8d8dd4cf714071aac47f9d28985465
           name: 'CPU utilization'
-          type: ZABBIX_ACTIVE
-          key: 'system.cpu.util[,total,avg1]'
+          type: CALCULATED
+          key: cpu.util.total
+          delay: 60s
+          params: '100 - last(//system.cpu.util[,idle,avg1])'
           value_type: FLOAT
           units: '%'
-          description: 'Total CPU utilization across all modes (user + system + other).'
+          description: 'Total CPU utilization (100% minus idle time). Computed as a calculated item because system.cpu.util[,total] is not supported by the Zabbix agent on FreeBSD/OPNsense.'
           tags:
             - tag: component
               value: cpu
           triggers:
             - uuid: 4024eb3d4fa44f788b3d88e2a770e9e7
-              expression: 'avg(/OPNsense Firewall by Zabbix agent/system.cpu.util[,total,avg1],5m)>{$OPNSENSE.CPU.UTIL.HIGH}'
+              expression: 'avg(/OPNsense Firewall by Zabbix agent/cpu.util.total,5m)>{$OPNSENSE.CPU.UTIL.HIGH}'
               name: 'CPU utilization is critically high'
               priority: HIGH
               description: 'Sustained critical CPU usage on a firewall.'
             - uuid: 7e53939374c94111bb367b6e8b85e0c6
-              expression: 'avg(/OPNsense Firewall by Zabbix agent/system.cpu.util[,total,avg1],5m)>{$OPNSENSE.CPU.UTIL.WARN}'
+              expression: 'avg(/OPNsense Firewall by Zabbix agent/cpu.util.total,5m)>{$OPNSENSE.CPU.UTIL.WARN}'
               name: 'CPU utilization is high'
               priority: WARNING
               description: 'Sustained high CPU can indicate packet processing pressure, IPS load or VPN load.'
