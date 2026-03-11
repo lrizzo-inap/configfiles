@@ -290,8 +290,9 @@ zabbix_export:
           name: 'CPU idle utilization'
           type: ZABBIX_ACTIVE
           key: 'system.cpu.util[,idle,avg1]'
+          delay: 60s
           value_type: FLOAT
-          history: 1h
+          history: 7d
           trends: 365d
           description: 'CPU idle time. Stored as a dependency for the total CPU utilization calculated item; not intended for direct alerting.'
           tags:
@@ -301,7 +302,7 @@ zabbix_export:
           name: 'CPU utilization'
           type: CALCULATED
           key: cpu.util.total
-          delay: 60s
+          delay: 90s
           params: '100 - last(//system.cpu.util[,idle,avg1])'
           value_type: FLOAT
           units: '%'
