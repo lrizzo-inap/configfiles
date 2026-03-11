@@ -36,6 +36,18 @@ pf_counter() {
     END { if (!found) print 0 }'
 }
 
+# Sum of all blocked packets (in + out, IPv4 + IPv6) across all PF interfaces.
+# pfctl -si prints per-interface stats with lines like:
+#   Packets In
+#     Blocked                    123                0
+# $2 = IPv4 blocked, $3 = IPv6 blocked.
+pf_blocked_packets() {
+  pfctl -si 2>/dev/null | awk '
+    /^[[:space:]]+Blocked[[:space:]]/ { sum += $2 + $3 }
+    END { print sum+0 }
+  '
+}
+
 carp_master_count() {
   ifconfig 2>/dev/null | awk '/carp: .*MASTER/ {c++} END {print c+0}'
 }
@@ -172,6 +184,7 @@ case "$cmd" in
   pf_states_max) pf_states_max ;;
   pf_states_percent) pf_states_percent ;;
   pf_counter) pf_counter "$@" ;;
+  pf_blocked_packets) pf_blocked_packets ;;
 
   carp_master_count) carp_master_count ;;
   carp_backup_count) carp_backup_count ;;
