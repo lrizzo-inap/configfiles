@@ -36,14 +36,17 @@ pf_counter() {
     END { if (!found) print 0 }'
 }
 
-# Sum of all blocked packets (in + out, IPv4 + IPv6) across all PF interfaces.
-# pfctl -si prints per-interface stats with lines like:
-#   Packets In
-#     Blocked                    123                0
-# $2 = IPv4 blocked, $3 = IPv6 blocked.
-pf_blocked_packets() {
+# Sum of all PF error/drop counters from pfctl -si.
+# Excludes 'match' (counts all rule hits, including pass rules) and
+# 'synproxy' (proxy intercept, not a discard). Everything else —
+# bad-offset, fragment, short, normalize, memory, bad-timestamp,
+# congestion, ip-option, proto-cksum, state-mismatch, state-insert,
+# state-limit, src-limit, map-failed — represents a packet PF discarded.
+pf_error_packets() {
   pfctl -si 2>/dev/null | awk '
-    /^[[:space:]]+Blocked[[:space:]]/ { sum += $2 + $3 }
+    /^Counters$/     { in_c=1; next }
+    in_c && /^[A-Z]/ { in_c=0 }
+    in_c && $1 != "match" && $1 != "synproxy" { sum += $2 }
     END { print sum+0 }
   '
 }
@@ -184,7 +187,7 @@ case "$cmd" in
   pf_states_max) pf_states_max ;;
   pf_states_percent) pf_states_percent ;;
   pf_counter) pf_counter "$@" ;;
-  pf_blocked_packets) pf_blocked_packets ;;
+  pf_error_packets) pf_error_packets ;;
 
   carp_master_count) carp_master_count ;;
   carp_backup_count) carp_backup_count ;;
