@@ -59,11 +59,11 @@ ipsec_established() {
 }
 
 openvpn_processes() {
-  pgrep -fc '/usr/local/sbin/openvpn' 2>/dev/null || echo 0
+  pgrep -f '/usr/local/sbin/openvpn' 2>/dev/null | awk 'END {print NR+0}'
 }
 
 unbound_processes() {
-  pgrep -fc '/usr/local/sbin/unbound' 2>/dev/null || echo 0
+  pgrep -f '/usr/local/sbin/unbound' 2>/dev/null | awk 'END {print NR+0}'
 }
 
 dhcp_leases() {
