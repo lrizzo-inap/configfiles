@@ -13,3 +13,9 @@ Monitor firmware update availability and pending reboot state
 
 ### 4. Missing enterprise check: configuration backup freshness
 A firewall with stale/no recent backup is a major operational risk, especially in regulated environments.
+
+### 5. No explicit nodata()/collection-failure guardrails for critical custom checks
+Many critical custom checks (PF counters, route default, VPN processes, gateway metrics) rely on UserParameters. If helper execution breaks (permissions/path/plugin drift), checks may go stale without a dedicated “data missing” trigger per critical metric family, creating false confidence while monitoring is partially blind.
+
+### 6. DHCP monitoring is tied to ISC DHCPv4 lease file only
+dhcp_leases() hardcodes /var/dhcpd/var/db/dhcpd.leases. That can miss environments using other DHCP backends/configurations (e.g., Kea or DHCPv6-only scenarios), reducing functional fit for broader monitoring needs.
