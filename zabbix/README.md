@@ -54,63 +54,35 @@ Configure:
 
 ---
 
-### 5. Configure User Parameters
+### 5. Install Custom Files from GitHub Raw URLs
 
-Navigate to:
+From the OPNsense shell, retrieve the files directly from GitHub and write them to the expected paths:
 
-Advanced → User Parameters
+```sh
+curl https://raw.githubusercontent.com/lrizzo-inap/configfiles/refs/heads/main/zabbix/opnsense-custom.conf > /usr/local/etc/zabbix_agentd.conf.d/opnsense.custom.conf
+curl https://raw.githubusercontent.com/lrizzo-inap/configfiles/refs/heads/main/zabbix/opnsense-zabbix.sh > /usr/local/bin/opnsense-zabbix.sh
+```
+Set the required permissions:
 
-Then:
-
-1. Add all **UserParameter entries** contained in the file: **UserParameter-gui.conf**
-
-2. In that file:
-- The **key** and **command** are separated by a comma.
-- This format is taken directly from the Zabbix agent configuration.
-
-3. Click **Apply** (bottom of the page).
-
-4. Restart **Zabbix Agent** using the button in the **top-right corner**.
+```sh
+chmod 644 /usr/local/etc/zabbix_agentd.conf.d/opnsense.custom.conf
+chmod 755 /usr/local/bin/opnsense-zabbix.sh
+```
 
 ---
 
-### 6. Verify Custom Parameters File
+### 6. Restart Zabbix Agent
 
-Ensure the following file exists:
+Restart the Zabbix agent to apply all changes:
 
-
-**/usr/local/etc/zabbix_agentd.conf.d/opnsense.custom.conf**
-
-
-This file contains additional `UserParameter` entries that use wildcard keys (`[*]`).
-
----
-
-### 7. Verify OPNsense Zabbix Helper Script
-
-Ensure the following file exists:
-
-
-**/usr/local/bin/opnsense-zabbix.sh**
-
-
-and that it is executable (if not run `chmod 755 /usr/local/bin/opnsense-zabbix.sh`)
-
-This file is an helper script used by the Zabbix Agent to gather some of the data from OPNsense.
-
----
-
-### 8. Restart the Agent
-
-Restart the Zabbix agent once more:
-
-
+```sh
 service zabbix_agentd restart
 
+```
 
 ---
 
-### 9. Verify Monitoring
+### 7. Verify Monitoring
 
 After the restart, verify in Zabbix that the **data fields are being populated correctly**.
 
