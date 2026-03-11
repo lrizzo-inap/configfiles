@@ -49,7 +49,9 @@ default_route_present() {
 }
 
 ipsec_established() {
-  if command -v ipsec >/dev/null 2>&1; then
+  if command -v swanctl >/dev/null 2>&1; then
+    swanctl --list-sas 2>/dev/null | awk '/ESTABLISHED/ {c++} END {print c+0}'
+  elif command -v ipsec >/dev/null 2>&1; then
     ipsec statusall 2>/dev/null | awk '/ESTABLISHED/ {c++} END {print c+0}'
   else
     echo 0
@@ -57,11 +59,11 @@ ipsec_established() {
 }
 
 openvpn_processes() {
-  pgrep -fc openvpn 2>/dev/null || echo 0
+  pgrep -fc '/usr/local/sbin/openvpn' 2>/dev/null || echo 0
 }
 
 unbound_processes() {
-  pgrep -fc unbound 2>/dev/null || echo 0
+  pgrep -fc '/usr/local/sbin/unbound' 2>/dev/null || echo 0
 }
 
 dhcp_leases() {
@@ -70,11 +72,16 @@ dhcp_leases() {
   awk '/^lease / {c++} END {print c+0}' "$leasefile"
 }
 
-# netstat -n -I IFACE -bdi on FreeBSD returns a single-interface line where:
-# field 6 = Ierrs, field 10 = Oerrs.
+# netstat -n -I IFACE -bdi on OPNsense column layout (data row = NR==2):
+# Ipkts=$5  Ierrs=$6  Idrop=$7  Ibytes=$8  Opkts=$9  Oerrs=$10  Obytes=$11
 if_inerrors() {
   iface="$1"
   netstat -n -I "$iface" -bdi 2>/dev/null | awk 'NR==2 {print $6; found=1} END {if (!found) print 0}'
+}
+
+if_idrop() {
+  iface="$1"
+  netstat -n -I "$iface" -bdi 2>/dev/null | awk 'NR==2 {print $7; found=1} END {if (!found) print 0}'
 }
 
 if_outerrors() {
@@ -167,6 +174,7 @@ case "$cmd" in
   dhcp_leases) dhcp_leases ;;
 
   if_inerrors) if_inerrors "$@" ;;
+  if_idrop) if_idrop "$@" ;;
   if_outerrors) if_outerrors "$@" ;;
 
   gateway_discovery) gateway_discovery ;;
