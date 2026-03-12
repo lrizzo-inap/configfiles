@@ -35,6 +35,26 @@ zabbix_export:
           {$OPNSENSE.DHCP.LEASES.WARN}    — adjust to subnet capacity
           {$OPNSENSE.MEM.AVAIL.MIN}       — raise on systems with Suricata or large
                                             state tables (default: 200M)
+          {$OPNSENSE.NODATA.TIMEOUT}      — how long a metric may stop reporting
+                                            before a WARNING fires (default: 10m);
+                                            increase on flaky links to reduce noise
+
+        NODATA TRIGGERS
+        ---------------
+        Most OPNsense-specific items and the key OS metrics have a companion
+        nodata() trigger that fires at WARNING severity when no value has been
+        received for NODATA.TIMEOUT (default 10 m). These triggers catch the case
+        where the Zabbix agent is reachable but a specific UserParameter script
+        is silently failing, which would otherwise go undetected. They fire in
+        addition to any threshold-based triggers on the same item.
+
+        Items covered by nodata() triggers:
+          system.cpu.util[,idle,avg1]    vm.memory.size[available]
+          opnsense.carp.master.count     opnsense.pf.states.current
+          opnsense.pf.states.percent     opnsense.pf.counter.dropped
+          opnsense.route.default.present opnsense.unbound.processes
+          opnsense.ipsec.established     opnsense.openvpn.processes
+          opnsense.dhcp.leases
 
         MONITORED AREAS
         ---------------
@@ -49,10 +69,12 @@ zabbix_export:
 
         CPU
           cpu.util.total         — calculated as 100 − idle (FreeBSD limitation);
-                                   WARNING at UTIL.WARN%, HIGH at UTIL.HIGH%
+                                   WARNING at UTIL.WARN%, HIGH at UTIL.HIGH%;
+                                   WARNING nodata() after NODATA.TIMEOUT
 
         MEMORY
-          vm.memory.size[available]  — WARNING if below MEM.AVAIL.MIN
+          vm.memory.size[available]  — WARNING if below MEM.AVAIL.MIN;
+                                       WARNING nodata() after NODATA.TIMEOUT
 
         STORAGE
           vfs.fs.size[/,pfree]       — AVERAGE if free space < FS.PFREE.MIN%
@@ -60,14 +82,17 @@ zabbix_export:
 
         CARP
           opnsense.carp.master.count — AVERAGE if below CARP.MASTER.MIN;
-                                       HIGH on any decrease (failover)
+                                       HIGH on any decrease (failover);
+                                       WARNING nodata() after NODATA.TIMEOUT
           opnsense.carp.backup.count — informational
 
         PACKET FILTER — STATE TABLE
-          opnsense.pf.states.current   — raw state count
+          opnsense.pf.states.current   — raw state count;
+                                         WARNING nodata() after NODATA.TIMEOUT
           opnsense.pf.states.max       — configured hard limit (polled every 10 min)
           opnsense.pf.states.percent   — utilization %; WARNING/HIGH thresholds;
-                                         plus exhaustion prediction via timeleft()
+                                         plus exhaustion prediction via timeleft();
+                                         WARNING nodata() after NODATA.TIMEOUT
 
         PACKET FILTER — ERROR COUNTERS
           opnsense.pf.counter.memory       — HIGH on any increase
@@ -76,20 +101,26 @@ zabbix_export:
                                              counters (excludes match, synproxy);
                                              CHANGE_PER_SECOND → rate in pps;
                                              spike trigger: avg(5m) > FLOOR AND
-                                             avg(5m) > SPIKE.FACTOR × trendavg(1w)
+                                             avg(5m) > SPIKE.FACTOR × trendavg(1w);
+                                             WARNING nodata() after NODATA.TIMEOUT
 
         ROUTING
-          opnsense.route.default.present   — DISASTER if default route missing
+          opnsense.route.default.present   — DISASTER if default route missing;
+                                             WARNING nodata() after NODATA.TIMEOUT
 
         DNS
-          opnsense.unbound.processes       — HIGH if no Unbound process for 5 min
+          opnsense.unbound.processes       — HIGH if no Unbound process for 5 min;
+                                             WARNING nodata() after NODATA.TIMEOUT
 
         VPN
-          opnsense.ipsec.established       — AVERAGE if below IPSEC.MIN
-          opnsense.openvpn.processes       — WARNING if below OPENVPN.MIN
+          opnsense.ipsec.established       — AVERAGE if below IPSEC.MIN;
+                                             WARNING nodata() after NODATA.TIMEOUT
+          opnsense.openvpn.processes       — WARNING if below OPENVPN.MIN;
+                                             WARNING nodata() after NODATA.TIMEOUT
 
         DHCP
-          opnsense.dhcp.leases             — INFO if above DHCP.LEASES.WARN
+          opnsense.dhcp.leases             — INFO if above DHCP.LEASES.WARN;
+                                             WARNING nodata() after NODATA.TIMEOUT
 
         SSL CERTIFICATE
           opnsense.ssl.cert.days           — reads /var/etc/cert.pem;
@@ -221,6 +252,11 @@ zabbix_export:
               name: 'CARP MASTER count decreased (possible failover)'
               priority: HIGH
               description: 'The number of CARP MASTER interfaces decreased, indicating this node may have demoted to BACKUP. Investigate the CARP state on both HA nodes.'
+            - uuid: aa1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+              expression: 'nodata(/OPNsense Firewall by Zabbix agent/opnsense.carp.master.count,{$OPNSENSE.NODATA.TIMEOUT})=1'
+              name: 'No data received for CARP MASTER count'
+              priority: WARNING
+              description: 'No data has been received for the CARP MASTER count item in the last {$OPNSENSE.NODATA.TIMEOUT}. The agent may be running but the UserParameter script is failing.'
         - uuid: 8a70196da1574c68b07f66ecd7dafccb
           name: 'DHCP lease count'
           type: ZABBIX_ACTIVE
@@ -236,6 +272,11 @@ zabbix_export:
               name: 'DHCP lease count is above warning threshold'
               priority: INFO
               description: 'Lease count is above the configured threshold; tune per site.'
+            - uuid: cc2b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+              expression: 'nodata(/OPNsense Firewall by Zabbix agent/opnsense.dhcp.leases,{$OPNSENSE.NODATA.TIMEOUT})=1'
+              name: 'No data received for DHCP lease count'
+              priority: WARNING
+              description: 'No data has been received for the DHCP lease count item in the last {$OPNSENSE.NODATA.TIMEOUT}. The agent may be running but the UserParameter script is failing.'
         - uuid: 5b4f233289ec493db7c0b5637ea21e8d
           name: 'Established IPsec SAs'
           type: ZABBIX_ACTIVE
@@ -250,6 +291,11 @@ zabbix_export:
               name: 'IPsec established SA count below expected minimum'
               priority: AVERAGE
               description: 'Established IPsec SA count is below the configured threshold.'
+            - uuid: aa2b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+              expression: 'nodata(/OPNsense Firewall by Zabbix agent/opnsense.ipsec.established,{$OPNSENSE.NODATA.TIMEOUT})=1'
+              name: 'No data received for IPsec established SA count'
+              priority: WARNING
+              description: 'No data has been received for the IPsec established SA count item in the last {$OPNSENSE.NODATA.TIMEOUT}. The agent may be running but the UserParameter script is failing.'
         - uuid: dcdb1648ed654a0a953ee5cbe8987e3c
           name: 'OpenVPN process count'
           type: ZABBIX_ACTIVE
@@ -264,6 +310,11 @@ zabbix_export:
               name: 'OpenVPN process count below expected minimum'
               priority: WARNING
               description: 'Running OpenVPN process count is below the configured threshold.'
+            - uuid: bb2b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+              expression: 'nodata(/OPNsense Firewall by Zabbix agent/opnsense.openvpn.processes,{$OPNSENSE.NODATA.TIMEOUT})=1'
+              name: 'No data received for OpenVPN process count'
+              priority: WARNING
+              description: 'No data has been received for the OpenVPN process count item in the last {$OPNSENSE.NODATA.TIMEOUT}. The agent may be running but the UserParameter script is failing.'
         - uuid: f5d605071e454f5cb866895ec2f266cc
           name: 'PF error packet rate'
           type: ZABBIX_ACTIVE
@@ -282,6 +333,11 @@ zabbix_export:
               name: 'PF error packet spike detected'
               priority: WARNING
               description: 'The 5-minute average PF error packet rate is more than {$OPNSENSE.PF.DROPPED.SPIKE.FACTOR}x the 7-day trend baseline and above the minimum floor of {$OPNSENSE.PF.DROPPED.RATE.FLOOR} pps. This may indicate a new attack pattern, a network anomaly, or sudden infrastructure trouble. Run pfctl -si to identify which error counter is elevated.'
+            - uuid: dd1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+              expression: 'nodata(/OPNsense Firewall by Zabbix agent/opnsense.pf.counter.dropped,{$OPNSENSE.NODATA.TIMEOUT})=1'
+              name: 'No data received for PF error packet rate'
+              priority: WARNING
+              description: 'No data has been received for the PF error packet rate item in the last {$OPNSENSE.NODATA.TIMEOUT}. The agent may be running but the UserParameter script is failing.'
         - uuid: 4bc93d7f14f444f5993bf89a3bea38b7
           name: 'PF counter memory'
           type: ZABBIX_ACTIVE
@@ -318,6 +374,12 @@ zabbix_export:
           tags:
             - tag: component
               value: pf
+          triggers:
+            - uuid: bb1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+              expression: 'nodata(/OPNsense Firewall by Zabbix agent/opnsense.pf.states.current,{$OPNSENSE.NODATA.TIMEOUT})=1'
+              name: 'No data received for PF current states'
+              priority: WARNING
+              description: 'No data has been received for the PF current states item in the last {$OPNSENSE.NODATA.TIMEOUT}. The agent may be running but the UserParameter script is failing.'
         - uuid: 7b3976adb4ea43dfa51d0145d15f869f
           name: 'PF maximum states'
           type: ZABBIX_ACTIVE
@@ -353,6 +415,11 @@ zabbix_export:
               name: 'PF state table exhaustion predicted'
               priority: HIGH
               description: 'Linear extrapolation of the past hour predicts the PF state table will be exhausted within the configured window. Review traffic patterns and consider raising the state table limit in System: Advanced: Firewall.'
+            - uuid: cc1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+              expression: 'nodata(/OPNsense Firewall by Zabbix agent/opnsense.pf.states.percent,{$OPNSENSE.NODATA.TIMEOUT})=1'
+              name: 'No data received for PF state table utilization'
+              priority: WARNING
+              description: 'No data has been received for the PF state table utilization item in the last {$OPNSENSE.NODATA.TIMEOUT}. The agent may be running but the UserParameter script is failing.'
         - uuid: be5654c384b447108088186686e1a3db
           name: 'Default route present'
           type: ZABBIX_ACTIVE
@@ -367,6 +434,11 @@ zabbix_export:
               name: 'Default route missing'
               priority: DISASTER
               description: 'The firewall has no default route.'
+            - uuid: ee1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+              expression: 'nodata(/OPNsense Firewall by Zabbix agent/opnsense.route.default.present,{$OPNSENSE.NODATA.TIMEOUT})=1'
+              name: 'No data received for default route check'
+              priority: WARNING
+              description: 'No data has been received for the default route check item in the last {$OPNSENSE.NODATA.TIMEOUT}. The agent may be running but the UserParameter script is failing.'
         - uuid: bd6d6fc0d044494dbbe345a496a4207f
           name: 'Unbound process count'
           type: ZABBIX_ACTIVE
@@ -381,6 +453,11 @@ zabbix_export:
               name: 'Unbound DNS is not running'
               priority: HIGH
               description: 'No Unbound process was found.'
+            - uuid: ff1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+              expression: 'nodata(/OPNsense Firewall by Zabbix agent/opnsense.unbound.processes,{$OPNSENSE.NODATA.TIMEOUT})=1'
+              name: 'No data received for Unbound process count'
+              priority: WARNING
+              description: 'No data has been received for the Unbound process count item in the last {$OPNSENSE.NODATA.TIMEOUT}. The agent may be running but the UserParameter script is failing.'
         - uuid: 253d7d4ba54d4eb7ac5406a9f0b7873a
           name: 'CPU idle utilization'
           type: ZABBIX_ACTIVE
@@ -393,6 +470,12 @@ zabbix_export:
           tags:
             - tag: component
               value: cpu
+          triggers:
+            - uuid: ee2b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+              expression: 'nodata(/OPNsense Firewall by Zabbix agent/system.cpu.util[,idle,avg1],{$OPNSENSE.NODATA.TIMEOUT})=1'
+              name: 'No data received for CPU utilization'
+              priority: WARNING
+              description: 'No data has been received for the CPU idle utilization item (source for the calculated CPU utilization) in the last {$OPNSENSE.NODATA.TIMEOUT}. The Zabbix agent may be failing to collect this metric.'
         - uuid: dc8d8dd4cf714071aac47f9d28985465
           name: 'CPU utilization'
           type: CALCULATED
@@ -480,6 +563,11 @@ zabbix_export:
               name: 'Available memory is low'
               priority: WARNING
               description: 'Low available memory inside the OPNsense guest.'
+            - uuid: 0d1e2f3a4b5c6d7e8f90a1b2c3d4e5f6
+              expression: 'nodata(/OPNsense Firewall by Zabbix agent/vm.memory.size[available],{$OPNSENSE.NODATA.TIMEOUT})=1'
+              name: 'No data received for available memory'
+              priority: WARNING
+              description: 'No data has been received for the available memory item in the last {$OPNSENSE.NODATA.TIMEOUT}. The Zabbix agent may be failing to collect this metric.'
         - uuid: d1e9c483c47c4e599f6b1e41fb3a7b79
           name: 'Memory used'
           type: ZABBIX_ACTIVE
@@ -729,6 +817,9 @@ zabbix_export:
         - macro: '{$OPNSENSE.MEM.AVAIL.MIN}'
           value: 200M
           description: 'Minimum available memory before alerting.'
+        - macro: '{$OPNSENSE.NODATA.TIMEOUT}'
+          value: 10m
+          description: 'Time window with no data received before a nodata() trigger fires. Applied to all main OPNsense metrics. Increase on hosts with unstable agent connectivity to reduce false positives.'
         - macro: '{$OPNSENSE.OPENVPN.MIN}'
           value: '0'
           description: 'Minimum expected number of OpenVPN processes. Set per host.'
