@@ -77,6 +77,44 @@ openvpn_processes() {
   pgrep -f '/usr/local/sbin/openvpn' 2>/dev/null | awk 'END {print NR+0}'
 }
 
+# Emit a Zabbix LLD JSON array of OpenVPN certificate files found in
+# /var/etc/openvpn/.  Each entry carries {#OVPN_CERT} set to the basename
+# without the .cert extension (e.g. "server1", "client2").
+openvpn_cert_discovery() {
+  dir="/var/etc/openvpn"
+  if [ ! -d "$dir" ]; then
+    printf '{"data":[]}\n'
+    return
+  fi
+  found=0
+  printf '{"data":['
+  for f in "$dir"/server[0-9]*.cert "$dir"/client[0-9]*.cert; do
+    [ -r "$f" ] || continue
+    name="$(basename "$f" .cert)"
+    # Skip any name that contains characters outside the safe set to avoid
+    # JSON injection or unexpected behaviour downstream.
+    case "$name" in
+      *[!a-zA-Z0-9_-]*) continue ;;
+    esac
+    [ "$found" -gt 0 ] && printf ','
+    printf '{"{#OVPN_CERT}":"%s"}' "$name"
+    found=$((found + 1))
+  done
+  printf ']}\n'
+}
+
+# Return days remaining until the certificate for a given OpenVPN instance
+# expires.  Argument is the bare cert name as discovered by
+# openvpn_cert_discovery (e.g. "server1").  Returns -1 when the file cannot
+# be read or the name fails the safety check.
+openvpn_cert_days() {
+  name="$1"
+  case "$name" in
+    "" | *[!a-zA-Z0-9_-]*) echo -1; return ;;
+  esac
+  ssl_cert_days_remaining "/var/etc/openvpn/${name}.cert"
+}
+
 unbound_processes() {
   pgrep -f '/usr/local/sbin/unbound' 2>/dev/null | awk 'END {print NR+0}'
 }
@@ -196,6 +234,8 @@ case "$cmd" in
 
   ipsec_established) ipsec_established ;;
   openvpn_processes) openvpn_processes ;;
+  openvpn_cert_discovery) openvpn_cert_discovery ;;
+  openvpn_cert_days) openvpn_cert_days "$@" ;;
 
   unbound_processes) unbound_processes ;;
   dhcp_leases) dhcp_leases ;;

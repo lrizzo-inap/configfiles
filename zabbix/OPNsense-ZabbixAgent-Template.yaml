@@ -131,6 +131,16 @@ zabbix_export:
                                              HIGH < CERT.HIGH days;
                                              -1 if cert unreadable (no alert)
 
+        OPENVPN CERTIFICATES  (LLD via opnsense.openvpn.cert.discovery)
+          opnsense.openvpn.cert.days[N]   — days until expiry for each cert
+                                             found in /var/etc/openvpn/
+                                             (server*.cert, client*.cert);
+                                             WARNING < CERT.WARN days;
+                                             HIGH < CERT.HIGH days;
+                                             -1 if cert unreadable (no alert);
+                                             reuses {$OPNSENSE.SSL.CERT.HIGH}
+                                             and {$OPNSENSE.SSL.CERT.WARN}
+
         INTERFACES  (LLD via net.if.discovery, internal interfaces excluded)
           net.if.in / net.if.out           — traffic in Bps
           opnsense.if.inerrors             — WARNING/HIGH on counter increase
@@ -601,6 +611,35 @@ zabbix_export:
               priority: WARNING
               description: 'The OPNsense web GUI SSL certificate will expire within the warning threshold. Plan renewal.'
       discovery_rules:
+        - uuid: b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7
+          name: 'OpenVPN certificate discovery'
+          type: ZABBIX_ACTIVE
+          key: opnsense.openvpn.cert.discovery
+          delay: 1h
+          description: 'Discovers OpenVPN certificate files (server*.cert, client*.cert) under /var/etc/openvpn/ and creates per-instance expiry items. Each discovered entry exposes {#OVPN_CERT} set to the bare filename without extension (e.g. server1, client2).'
+          item_prototypes:
+            - uuid: c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8
+              name: 'OpenVPN {#OVPN_CERT} certificate days remaining'
+              type: ZABBIX_ACTIVE
+              key: 'opnsense.openvpn.cert.days[{#OVPN_CERT}]'
+              delay: 1h
+              description: 'Days until the OpenVPN certificate {#OVPN_CERT} expires. Returns -1 if the certificate file cannot be read.'
+              tags:
+                - tag: component
+                  value: ssl
+                - tag: openvpn-cert
+                  value: '{#OVPN_CERT}'
+              trigger_prototypes:
+                - uuid: d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9
+                  expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.openvpn.cert.days[{#OVPN_CERT}])<{$OPNSENSE.SSL.CERT.HIGH} and last(/OPNsense Firewall by Zabbix agent/opnsense.openvpn.cert.days[{#OVPN_CERT}])>=0'
+                  name: 'OpenVPN {#OVPN_CERT} certificate expires in less than {$OPNSENSE.SSL.CERT.HIGH} days'
+                  priority: HIGH
+                  description: 'The OpenVPN certificate {#OVPN_CERT} will expire within the high threshold. Renew it promptly to avoid VPN connectivity failures.'
+                - uuid: e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0
+                  expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.openvpn.cert.days[{#OVPN_CERT}])<{$OPNSENSE.SSL.CERT.WARN} and last(/OPNsense Firewall by Zabbix agent/opnsense.openvpn.cert.days[{#OVPN_CERT}])>={$OPNSENSE.SSL.CERT.HIGH}'
+                  name: 'OpenVPN {#OVPN_CERT} certificate expires in less than {$OPNSENSE.SSL.CERT.WARN} days'
+                  priority: WARNING
+                  description: 'The OpenVPN certificate {#OVPN_CERT} will expire within the warning threshold. Plan renewal before service disruption.'
         - uuid: 0be123bbd96d4d83b9a7fd19472f8e17
           name: 'Interface discovery'
           type: ZABBIX_ACTIVE
