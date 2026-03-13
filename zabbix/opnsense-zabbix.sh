@@ -77,6 +77,50 @@ openvpn_processes() {
   pgrep -f '/usr/local/sbin/openvpn' 2>/dev/null | awk 'END {print NR+0}'
 }
 
+# Emit a Zabbix LLD JSON array of OpenVPN instances whose .conf file in
+# /var/etc/openvpn/ contains an inline <cert> block.  Each entry carries
+# {#OVPN_CERT} set to the conf basename without extension (e.g. "server1",
+# "client2").  OPNsense embeds the leaf certificate directly inside the conf
+# file using OpenVPN's inline block syntax rather than separate .cert files.
+openvpn_cert_discovery() {
+  dir="/var/etc/openvpn"
+  if [ ! -d "$dir" ]; then
+    printf '{"data":[]}\n'
+    return
+  fi
+  found=0
+  printf '{"data":['
+  for f in "$dir"/server[0-9]*.conf "$dir"/client[0-9]*.conf; do
+    [ -r "$f" ] || continue
+    # Only include instances that actually have an inline certificate block.
+    grep -q '<cert>' "$f" 2>/dev/null || continue
+    name="$(basename "$f" .conf)"
+    # Skip any name that contains characters outside the safe set to avoid
+    # JSON injection or unexpected behaviour downstream.
+    case "$name" in
+      *[!a-zA-Z0-9_-]*) continue ;;
+    esac
+    [ "$found" -gt 0 ] && printf ','
+    printf '{"{#OVPN_CERT}":"%s"}' "$name"
+    found=$((found + 1))
+  done
+  printf ']}\n'
+}
+
+# Return days remaining for a given OpenVPN instance certificate.  Extracts
+# the inline <cert>...</cert> PEM block from the .conf file and delegates to
+# _cert_days_from_pem().  Returns -9999 when the conf file cannot be read or
+# the name fails the safety check.
+openvpn_cert_days() {
+  name="$1"
+  case "$name" in
+    "" | *[!a-zA-Z0-9_-]*) echo -9999; return ;;
+  esac
+  conffile="/var/etc/openvpn/${name}.conf"
+  [ -r "$conffile" ] || { echo -9999; return; }
+  awk '/<cert>/{p=1;next} /<\/cert>/{p=0} p' "$conffile" | _cert_days_from_pem
+}
+
 unbound_processes() {
   pgrep -f '/usr/local/sbin/unbound' 2>/dev/null | awk 'END {print NR+0}'
 }
@@ -168,15 +212,25 @@ $data
 EOF
 }
 
-ssl_cert_days_remaining() {
-  certfile="${1:-/var/etc/cert.pem}"
-  [ -r "$certfile" ] || { echo -1; return; }
-  enddate="$(openssl x509 -enddate -noout -in "$certfile" 2>/dev/null | cut -d= -f2)"
-  [ -z "$enddate" ] && { echo -1; return; }
+# Internal helper used by ssl_cert_days_remaining() and openvpn_cert_days().
+# Reads a PEM certificate from stdin and returns the number of days until it
+# expires.  Negative values (other than -9999) mean the certificate has
+# already expired.  Returns -9999 on any parse or date conversion failure.
+_cert_days_from_pem() {
+  enddate="$(openssl x509 -enddate -noout 2>/dev/null | cut -d= -f2)"
+  [ -z "$enddate" ] && { echo -9999; return; }
   end_epoch="$(date -j -f "%b %d %T %Y %Z" "$enddate" "+%s" 2>/dev/null)"
-  [ -z "$end_epoch" ] && { echo -1; return; }
+  [ -z "$end_epoch" ] && { echo -9999; return; }
   now_epoch="$(date +%s)"
   echo $(( (end_epoch - now_epoch) / 86400 ))
+}
+
+# Return days remaining for the web GUI certificate.  Reads the PEM file
+# directly from disk and delegates to _cert_days_from_pem().
+ssl_cert_days_remaining() {
+  certfile="${1:-/usr/local/etc/lighttpd_webgui/cert.pem}"
+  [ -r "$certfile" ] || { echo -9999; return; }
+  _cert_days_from_pem < "$certfile"
 }
 
 cmd="$1"
@@ -196,6 +250,8 @@ case "$cmd" in
 
   ipsec_established) ipsec_established ;;
   openvpn_processes) openvpn_processes ;;
+  openvpn_cert_discovery) openvpn_cert_discovery ;;
+  openvpn_cert_days) openvpn_cert_days "$@" ;;
 
   unbound_processes) unbound_processes ;;
   dhcp_leases) dhcp_leases ;;
