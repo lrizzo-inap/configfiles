@@ -77,9 +77,11 @@ openvpn_processes() {
   pgrep -f '/usr/local/sbin/openvpn' 2>/dev/null | awk 'END {print NR+0}'
 }
 
-# Emit a Zabbix LLD JSON array of OpenVPN certificate files found in
-# /var/etc/openvpn/.  Each entry carries {#OVPN_CERT} set to the basename
-# without the .cert extension (e.g. "server1", "client2").
+# Emit a Zabbix LLD JSON array of OpenVPN instances whose .conf file in
+# /var/etc/openvpn/ contains an inline <cert> block.  Each entry carries
+# {#OVPN_CERT} set to the conf basename without extension (e.g. "server1",
+# "client2").  OPNsense embeds the leaf certificate directly inside the conf
+# file using OpenVPN's inline block syntax rather than separate .cert files.
 openvpn_cert_discovery() {
   dir="/var/etc/openvpn"
   if [ ! -d "$dir" ]; then
@@ -88,9 +90,11 @@ openvpn_cert_discovery() {
   fi
   found=0
   printf '{"data":['
-  for f in "$dir"/server[0-9]*.cert "$dir"/client[0-9]*.cert; do
+  for f in "$dir"/server[0-9]*.conf "$dir"/client[0-9]*.conf; do
     [ -r "$f" ] || continue
-    name="$(basename "$f" .cert)"
+    # Only include instances that actually have an inline certificate block.
+    grep -q '<cert>' "$f" 2>/dev/null || continue
+    name="$(basename "$f" .conf)"
     # Skip any name that contains characters outside the safe set to avoid
     # JSON injection or unexpected behaviour downstream.
     case "$name" in
@@ -103,16 +107,26 @@ openvpn_cert_discovery() {
   printf ']}\n'
 }
 
-# Return days remaining until the certificate for a given OpenVPN instance
-# expires.  Argument is the bare cert name as discovered by
-# openvpn_cert_discovery (e.g. "server1").  Returns -1 when the file cannot
-# be read or the name fails the safety check.
+# Return days remaining until the leaf certificate for a given OpenVPN
+# instance expires.  Argument is the bare instance name as produced by
+# openvpn_cert_discovery (e.g. "server1").  The certificate PEM is extracted
+# from the inline <cert>...</cert> block inside the .conf file and fed to
+# openssl on stdin.  Returns -9999 when the conf file cannot be read, the
+# name fails the safety check, or openssl cannot parse the certificate.
 openvpn_cert_days() {
   name="$1"
   case "$name" in
     "" | *[!a-zA-Z0-9_-]*) echo -9999; return ;;
   esac
-  ssl_cert_days_remaining "/var/etc/openvpn/${name}.cert"
+  conffile="/var/etc/openvpn/${name}.conf"
+  [ -r "$conffile" ] || { echo -9999; return; }
+  enddate="$(awk '/<cert>/{p=1;next} /<\/cert>/{p=0} p' "$conffile" \
+    | openssl x509 -enddate -noout 2>/dev/null | cut -d= -f2)"
+  [ -z "$enddate" ] && { echo -9999; return; }
+  end_epoch="$(date -j -f "%b %d %T %Y %Z" "$enddate" "+%s" 2>/dev/null)"
+  [ -z "$end_epoch" ] && { echo -9999; return; }
+  now_epoch="$(date +%s)"
+  echo $(( (end_epoch - now_epoch) / 86400 ))
 }
 
 unbound_processes() {

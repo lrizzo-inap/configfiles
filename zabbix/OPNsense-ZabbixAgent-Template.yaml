@@ -134,9 +134,12 @@ zabbix_export:
                                              -9999 if cert unreadable (no alert)
 
         OPENVPN CERTIFICATES  (LLD via opnsense.openvpn.cert.discovery)
-          opnsense.openvpn.cert.days[N]   — days until expiry for each cert
-                                             found in /var/etc/openvpn/
-                                             (server*.cert, client*.cert);
+          opnsense.openvpn.cert.days[N]   — days until expiry of the inline
+                                             leaf cert in each
+                                             /var/etc/openvpn/server*.conf
+                                             or client*.conf that contains a
+                                             <cert> block (OPNsense embeds
+                                             certs inline, not as .cert files);
                                              WARNING < CERT.WARN days;
                                              HIGH < CERT.HIGH days;
                                              negative (not -9999) = already
@@ -620,14 +623,14 @@ zabbix_export:
           type: ZABBIX_ACTIVE
           key: opnsense.openvpn.cert.discovery
           delay: 1h
-          description: 'Discovers OpenVPN certificate files (server*.cert, client*.cert) under /var/etc/openvpn/ and creates per-instance expiry items. Each discovered entry exposes {#OVPN_CERT} set to the bare filename without extension (e.g. server1, client2).'
+          description: 'Discovers OpenVPN instances under /var/etc/openvpn/ whose .conf file contains an inline <cert> block (server*.conf, client*.conf). OPNsense embeds the leaf certificate directly in the conf file rather than writing separate .cert files. Each discovered entry exposes {#OVPN_CERT} set to the conf basename without extension (e.g. server1, client2).'
           item_prototypes:
             - uuid: c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8
               name: 'OpenVPN {#OVPN_CERT} certificate days remaining'
               type: ZABBIX_ACTIVE
               key: 'opnsense.openvpn.cert.days[{#OVPN_CERT}]'
               delay: 1h
-              description: 'Days until the OpenVPN certificate {#OVPN_CERT} expires. Negative values other than -9999 mean the certificate has already expired. Returns -9999 if the certificate cannot be read (no alert is raised for that value).'
+              description: 'Days until the inline leaf certificate in /var/etc/openvpn/{#OVPN_CERT}.conf expires. Negative values other than -9999 mean the certificate has already expired. Returns -9999 if the conf file cannot be read or contains no parseable <cert> block (no alert is raised for that value).'
               tags:
                 - tag: component
                   value: ssl
