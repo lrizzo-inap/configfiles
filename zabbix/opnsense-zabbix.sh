@@ -110,7 +110,7 @@ openvpn_cert_discovery() {
 openvpn_cert_days() {
   name="$1"
   case "$name" in
-    "" | *[!a-zA-Z0-9_-]*) echo -1; return ;;
+    "" | *[!a-zA-Z0-9_-]*) echo -9999; return ;;
   esac
   ssl_cert_days_remaining "/var/etc/openvpn/${name}.cert"
 }
@@ -208,11 +208,11 @@ EOF
 
 ssl_cert_days_remaining() {
   certfile="${1:-/var/etc/cert.pem}"
-  [ -r "$certfile" ] || { echo -1; return; }
+  [ -r "$certfile" ] || { echo -9999; return; }
   enddate="$(openssl x509 -enddate -noout -in "$certfile" 2>/dev/null | cut -d= -f2)"
-  [ -z "$enddate" ] && { echo -1; return; }
+  [ -z "$enddate" ] && { echo -9999; return; }
   end_epoch="$(date -j -f "%b %d %T %Y %Z" "$enddate" "+%s" 2>/dev/null)"
-  [ -z "$end_epoch" ] && { echo -1; return; }
+  [ -z "$end_epoch" ] && { echo -9999; return; }
   now_epoch="$(date +%s)"
   echo $(( (end_epoch - now_epoch) / 86400 ))
 }

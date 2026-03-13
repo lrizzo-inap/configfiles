@@ -129,7 +129,9 @@ zabbix_export:
           opnsense.ssl.cert.days           — reads /var/etc/cert.pem;
                                              WARNING < CERT.WARN days;
                                              HIGH < CERT.HIGH days;
-                                             -1 if cert unreadable (no alert)
+                                             negative (not -9999) = already
+                                             expired, HIGH fires;
+                                             -9999 if cert unreadable (no alert)
 
         OPENVPN CERTIFICATES  (LLD via opnsense.openvpn.cert.discovery)
           opnsense.openvpn.cert.days[N]   — days until expiry for each cert
@@ -137,7 +139,9 @@ zabbix_export:
                                              (server*.cert, client*.cert);
                                              WARNING < CERT.WARN days;
                                              HIGH < CERT.HIGH days;
-                                             -1 if cert unreadable (no alert);
+                                             negative (not -9999) = already
+                                             expired, HIGH fires;
+                                             -9999 if cert unreadable (no alert);
                                              reuses {$OPNSENSE.SSL.CERT.HIGH}
                                              and {$OPNSENSE.SSL.CERT.WARN}
 
@@ -595,13 +599,13 @@ zabbix_export:
           type: ZABBIX_ACTIVE
           key: opnsense.ssl.cert.days
           delay: 1h
-          description: 'Days until the OPNsense web GUI SSL certificate expires. Returns -1 if the certificate cannot be read.'
+          description: 'Days until the OPNsense web GUI SSL certificate expires. Negative values other than -9999 mean the certificate has already expired. Returns -9999 if the certificate cannot be read (no alert is raised for that value).'
           tags:
             - tag: component
               value: ssl
           triggers:
             - uuid: f7a8b9c0d1e24f3a4b5c6d7e8f9a0b1c
-              expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)<{$OPNSENSE.SSL.CERT.HIGH} and last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)<>-1'
+              expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)<{$OPNSENSE.SSL.CERT.HIGH} and last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)<>-9999'
               name: 'Web GUI SSL certificate expires in less than {$OPNSENSE.SSL.CERT.HIGH} days'
               priority: HIGH
               description: 'The OPNsense web GUI SSL certificate will expire within the high threshold. Renew it promptly to avoid browser warnings and service disruption.'
@@ -623,7 +627,7 @@ zabbix_export:
               type: ZABBIX_ACTIVE
               key: 'opnsense.openvpn.cert.days[{#OVPN_CERT}]'
               delay: 1h
-              description: 'Days until the OpenVPN certificate {#OVPN_CERT} expires. Returns -1 if the certificate file cannot be read.'
+              description: 'Days until the OpenVPN certificate {#OVPN_CERT} expires. Negative values other than -9999 mean the certificate has already expired. Returns -9999 if the certificate cannot be read (no alert is raised for that value).'
               tags:
                 - tag: component
                   value: ssl
@@ -631,7 +635,7 @@ zabbix_export:
                   value: '{#OVPN_CERT}'
               trigger_prototypes:
                 - uuid: d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9
-                  expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.openvpn.cert.days[{#OVPN_CERT}])<{$OPNSENSE.SSL.CERT.HIGH} and last(/OPNsense Firewall by Zabbix agent/opnsense.openvpn.cert.days[{#OVPN_CERT}])<>-1'
+                  expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.openvpn.cert.days[{#OVPN_CERT}])<{$OPNSENSE.SSL.CERT.HIGH} and last(/OPNsense Firewall by Zabbix agent/opnsense.openvpn.cert.days[{#OVPN_CERT}])<>-9999'
                   name: 'OpenVPN {#OVPN_CERT} certificate expires in less than {$OPNSENSE.SSL.CERT.HIGH} days'
                   priority: HIGH
                   description: 'The OpenVPN certificate {#OVPN_CERT} will expire within the high threshold. Renew it promptly to avoid VPN connectivity failures.'
