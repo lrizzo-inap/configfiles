@@ -86,13 +86,19 @@ config_cert_discovery() {
   config="/conf/config.xml"
   [ -r "$config" ] || { printf '{"data":[]}\n'; return; }
   awk '
-    BEGIN { in_cert=0; found=0; printf "{\"data\":[" }
-    /<cert[ >]/ { in_cert=1; descr="" }
-    in_cert && /<descr>/ {
-      line = $0
-      gsub(/^[[:space:]]*<descr>/, "", line)
-      gsub(/<\/descr>.*$/, "", line)
+    BEGIN { in_cert=0; in_descr=0; found=0; printf "{\"data\":[" }
+    /<cert[ >]/ { in_cert=1; in_descr=0; descr="" }
+    in_cert && /<descr>/ && !in_descr {
+      in_descr=1
+      line = $0; gsub(/^[[:space:]]*<descr>/, "", line)
+      if (index(line, "</descr>") > 0) { gsub(/<\/descr>.*$/, "", line); in_descr=0 }
       descr = line
+    }
+    in_descr && !/<descr>/ {
+      line = $0
+      if (index(line, "</descr>") > 0) { gsub(/<\/descr>.*$/, "", line); in_descr=0 }
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
+      descr = descr line
     }
     in_cert && /<\/cert>/ {
       if (descr != "") {
@@ -102,7 +108,7 @@ config_cert_discovery() {
         printf "{\"{#CERTNAME}\":\"%s\"}", descr
         found++
       }
-      in_cert=0; descr=""
+      in_cert=0; in_descr=0; descr=""
     }
     END { printf "]\n}\n" }
   ' "$config"
@@ -110,30 +116,38 @@ config_cert_discovery() {
 
 # Return days remaining for the certificate with the given description string.
 # Locates the matching <cert> block in /conf/config.xml, base64-decodes the
-# <crt> content, and delegates to _cert_days_from_pem().  Returns -9999 when
-# the cert cannot be located, decoded, or parsed.
+# <crt> content, and delegates to _cert_days_from_pem().  Accumulates <crt>
+# content across multiple lines in case the base64 payload is wrapped.
+# Returns -9999 when the cert cannot be located, decoded, or parsed.
 config_cert_days() {
   name="$1"
   [ -z "$name" ] && { echo -9999; return; }
   config="/conf/config.xml"
   [ -r "$config" ] || { echo -9999; return; }
   b64="$(awk -v target="$name" '
-    /<cert[ >]/ { in_cert=1; descr=""; crt="" }
+    /<cert[ >]/ { in_cert=1; in_crt=0; descr=""; crt="" }
     in_cert && /<descr>/ {
       line = $0
       gsub(/^[[:space:]]*<descr>/, "", line)
       gsub(/<\/descr>.*$/, "", line)
       descr = line
     }
-    in_cert && /<crt>/ {
-      line = $0
-      gsub(/^[[:space:]]*<crt>/, "", line)
-      gsub(/<\/crt>.*$/, "", line)
+    in_cert && /<crt>/ && !in_crt {
+      in_crt=1
+      line = $0; gsub(/^[[:space:]]*<crt>/, "", line)
+      if (index(line, "</crt>") > 0) { gsub(/<\/crt>.*$/, "", line); in_crt=0 }
+      gsub(/[[:space:]]/, "", line)
       crt = line
+    }
+    in_crt && !/<crt>/ {
+      line = $0
+      if (index(line, "</crt>") > 0) { gsub(/<\/crt>.*$/, "", line); in_crt=0 }
+      gsub(/[[:space:]]/, "", line)
+      crt = crt line
     }
     in_cert && /<\/cert>/ {
       if (descr == target && crt != "") { print crt; exit }
-      in_cert=0; descr=""; crt=""
+      in_cert=0; in_crt=0; descr=""; crt=""
     }
   ' "$config")"
   [ -z "$b64" ] && { echo -9999; return; }
