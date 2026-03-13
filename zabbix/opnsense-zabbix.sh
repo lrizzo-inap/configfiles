@@ -107,12 +107,10 @@ openvpn_cert_discovery() {
   printf ']}\n'
 }
 
-# Return days remaining until the leaf certificate for a given OpenVPN
-# instance expires.  Argument is the bare instance name as produced by
-# openvpn_cert_discovery (e.g. "server1").  The certificate PEM is extracted
-# from the inline <cert>...</cert> block inside the .conf file and fed to
-# openssl on stdin.  Returns -9999 when the conf file cannot be read, the
-# name fails the safety check, or openssl cannot parse the certificate.
+# Return days remaining for a given OpenVPN instance certificate.  Extracts
+# the inline <cert>...</cert> PEM block from the .conf file and delegates to
+# _cert_days_from_pem().  Returns -9999 when the conf file cannot be read or
+# the name fails the safety check.
 openvpn_cert_days() {
   name="$1"
   case "$name" in
@@ -120,13 +118,7 @@ openvpn_cert_days() {
   esac
   conffile="/var/etc/openvpn/${name}.conf"
   [ -r "$conffile" ] || { echo -9999; return; }
-  enddate="$(awk '/<cert>/{p=1;next} /<\/cert>/{p=0} p' "$conffile" \
-    | openssl x509 -enddate -noout 2>/dev/null | cut -d= -f2)"
-  [ -z "$enddate" ] && { echo -9999; return; }
-  end_epoch="$(date -j -f "%b %d %T %Y %Z" "$enddate" "+%s" 2>/dev/null)"
-  [ -z "$end_epoch" ] && { echo -9999; return; }
-  now_epoch="$(date +%s)"
-  echo $(( (end_epoch - now_epoch) / 86400 ))
+  awk '/<cert>/{p=1;next} /<\/cert>/{p=0} p' "$conffile" | _cert_days_from_pem
 }
 
 unbound_processes() {
@@ -220,15 +212,25 @@ $data
 EOF
 }
 
-ssl_cert_days_remaining() {
-  certfile="${1:-/usr/local/etc/lighttpd_webgui/cert.pem}"
-  [ -r "$certfile" ] || { echo -9999; return; }
-  enddate="$(openssl x509 -enddate -noout -in "$certfile" 2>/dev/null | cut -d= -f2)"
+# Internal helper used by ssl_cert_days_remaining() and openvpn_cert_days().
+# Reads a PEM certificate from stdin and returns the number of days until it
+# expires.  Negative values (other than -9999) mean the certificate has
+# already expired.  Returns -9999 on any parse or date conversion failure.
+_cert_days_from_pem() {
+  enddate="$(openssl x509 -enddate -noout 2>/dev/null | cut -d= -f2)"
   [ -z "$enddate" ] && { echo -9999; return; }
   end_epoch="$(date -j -f "%b %d %T %Y %Z" "$enddate" "+%s" 2>/dev/null)"
   [ -z "$end_epoch" ] && { echo -9999; return; }
   now_epoch="$(date +%s)"
   echo $(( (end_epoch - now_epoch) / 86400 ))
+}
+
+# Return days remaining for the web GUI certificate.  Reads the PEM file
+# directly from disk and delegates to _cert_days_from_pem().
+ssl_cert_days_remaining() {
+  certfile="${1:-/usr/local/etc/lighttpd_webgui/cert.pem}"
+  [ -r "$certfile" ] || { echo -9999; return; }
+  _cert_days_from_pem < "$certfile"
 }
 
 cmd="$1"
