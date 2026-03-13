@@ -126,7 +126,7 @@ zabbix_export:
                                              WARNING nodata() after NODATA.TIMEOUT
 
         SSL CERTIFICATE
-          opnsense.ssl.cert.days           — reads /var/etc/cert.pem;
+          opnsense.ssl.cert.days           — reads /usr/local/etc/lighttpd_webgui/cert.pem;
                                              WARNING < CERT.WARN days;
                                              HIGH < CERT.HIGH days;
                                              negative (not -9999) = already
@@ -602,7 +602,7 @@ zabbix_export:
           type: ZABBIX_ACTIVE
           key: opnsense.ssl.cert.days
           delay: 1h
-          description: 'Days until the OPNsense web GUI SSL certificate expires. Negative values other than -9999 mean the certificate has already expired. Returns -9999 if the certificate cannot be read (no alert is raised for that value).'
+          description: 'Days until the OPNsense web GUI SSL certificate expires (/usr/local/etc/lighttpd_webgui/cert.pem). Negative values other than -9999 mean the certificate has already expired. Returns -9999 if the certificate cannot be read (no alert is raised for that value).'
           tags:
             - tag: component
               value: ssl

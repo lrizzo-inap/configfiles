@@ -221,7 +221,7 @@ EOF
 }
 
 ssl_cert_days_remaining() {
-  certfile="${1:-/var/etc/cert.pem}"
+  certfile="${1:-/usr/local/etc/lighttpd_webgui/cert.pem}"
   [ -r "$certfile" ] || { echo -9999; return; }
   enddate="$(openssl x509 -enddate -noout -in "$certfile" 2>/dev/null | cut -d= -f2)"
   [ -z "$enddate" ] && { echo -9999; return; }
