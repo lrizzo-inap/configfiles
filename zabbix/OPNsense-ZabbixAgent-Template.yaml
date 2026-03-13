@@ -601,7 +601,7 @@ zabbix_export:
               value: ssl
           triggers:
             - uuid: f7a8b9c0d1e24f3a4b5c6d7e8f9a0b1c
-              expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)<{$OPNSENSE.SSL.CERT.HIGH} and last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)>=0'
+              expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)<{$OPNSENSE.SSL.CERT.HIGH} and last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)<>-1'
               name: 'Web GUI SSL certificate expires in less than {$OPNSENSE.SSL.CERT.HIGH} days'
               priority: HIGH
               description: 'The OPNsense web GUI SSL certificate will expire within the high threshold. Renew it promptly to avoid browser warnings and service disruption.'
@@ -631,7 +631,7 @@ zabbix_export:
                   value: '{#OVPN_CERT}'
               trigger_prototypes:
                 - uuid: d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9
-                  expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.openvpn.cert.days[{#OVPN_CERT}])<{$OPNSENSE.SSL.CERT.HIGH} and last(/OPNsense Firewall by Zabbix agent/opnsense.openvpn.cert.days[{#OVPN_CERT}])>=0'
+                  expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.openvpn.cert.days[{#OVPN_CERT}])<{$OPNSENSE.SSL.CERT.HIGH} and last(/OPNsense Firewall by Zabbix agent/opnsense.openvpn.cert.days[{#OVPN_CERT}])<>-1'
                   name: 'OpenVPN {#OVPN_CERT} certificate expires in less than {$OPNSENSE.SSL.CERT.HIGH} days'
                   priority: HIGH
                   description: 'The OpenVPN certificate {#OVPN_CERT} will expire within the high threshold. Renew it promptly to avoid VPN connectivity failures.'
