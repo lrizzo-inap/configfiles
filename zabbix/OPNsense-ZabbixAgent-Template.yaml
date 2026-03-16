@@ -134,7 +134,7 @@ zabbix_export:
                                              -9999 if cert unreadable (no alert)
 
         CERTIFICATES  (LLD via opnsense.cert.discovery)
-          opnsense.cert.days["NAME"]      — days until expiry for each
+          opnsense.cert.days["REFID"]     — days until expiry for each
                                              certificate found in
                                              /conf/config.xml (OpenVPN server,
                                              client, and other system certs);
@@ -623,14 +623,14 @@ zabbix_export:
           type: ZABBIX_ACTIVE
           key: opnsense.cert.discovery
           delay: 1h
-          description: 'Discovers all certificates registered in /conf/config.xml. Each discovered entry exposes {#CERTNAME} set to the certificate description (<descr>) from config.xml. This covers OpenVPN server certificates, client certificates, and any other system certificates stored in OPNsense.'
+          description: 'Discovers all certificates registered in /conf/config.xml. Each entry exposes {#CERTREFID} (the unique <refid> value, used as the item key) and {#CERTNAME} (the human-readable <descr> value, used for display). Using the refid as the key guarantees uniqueness even when two certificates share the same description. This covers OpenVPN server certificates, client certificates, and any other system certificates stored in OPNsense.'
           item_prototypes:
             - uuid: c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8
               name: '{#CERTNAME} certificate days remaining'
               type: ZABBIX_ACTIVE
-              key: 'opnsense.cert.days["{#CERTNAME}"]'
+              key: 'opnsense.cert.days["{#CERTREFID}"]'
               delay: 1h
-              description: 'Days until the certificate named {#CERTNAME} expires. The certificate is read from /conf/config.xml by matching its <descr> value and base64-decoding its <crt> field. Negative values other than -9999 mean the certificate has already expired. Returns -9999 if the certificate cannot be located or decoded (no alert is raised for that value).'
+              description: 'Days until the certificate {#CERTNAME} expires. The certificate is located in /conf/config.xml by its unique <refid> ({#CERTREFID}) and its expiry is determined by base64-decoding the <crt> field. Negative values other than -9999 mean the certificate has already expired. Returns -9999 if the certificate cannot be located or decoded (no alert is raised for that value).'
               tags:
                 - tag: component
                   value: ssl
@@ -638,12 +638,12 @@ zabbix_export:
                   value: '{#CERTNAME}'
               trigger_prototypes:
                 - uuid: d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9
-                  expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.cert.days["{#CERTNAME}"])<{$OPNSENSE.SSL.CERT.HIGH} and last(/OPNsense Firewall by Zabbix agent/opnsense.cert.days["{#CERTNAME}"])<>-9999'
+                  expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.cert.days["{#CERTREFID}"])<{$OPNSENSE.SSL.CERT.HIGH} and last(/OPNsense Firewall by Zabbix agent/opnsense.cert.days["{#CERTREFID}"])<>-9999'
                   name: '{#CERTNAME} certificate expires in less than {$OPNSENSE.SSL.CERT.HIGH} days'
                   priority: HIGH
                   description: 'Certificate {#CERTNAME} will expire within the high threshold. Renew it promptly to avoid service disruption.'
                 - uuid: e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0
-                  expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.cert.days["{#CERTNAME}"])<{$OPNSENSE.SSL.CERT.WARN} and last(/OPNsense Firewall by Zabbix agent/opnsense.cert.days["{#CERTNAME}"])>={$OPNSENSE.SSL.CERT.HIGH}'
+                  expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.cert.days["{#CERTREFID}"])<{$OPNSENSE.SSL.CERT.WARN} and last(/OPNsense Firewall by Zabbix agent/opnsense.cert.days["{#CERTREFID}"])>={$OPNSENSE.SSL.CERT.HIGH}'
                   name: '{#CERTNAME} certificate expires in less than {$OPNSENSE.SSL.CERT.WARN} days'
                   priority: WARNING
                   description: 'Certificate {#CERTNAME} will expire within the warning threshold. Plan renewal before service disruption.'

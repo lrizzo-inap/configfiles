@@ -78,7 +78,9 @@ openvpn_processes() {
 }
 
 # Emit a Zabbix LLD JSON array of all certificates found in /conf/config.xml.
-# Each entry carries {#CERTNAME} set to the certificate's <descr> value.
+# Each entry carries {#CERTREFID} (the unique <refid> value) and {#CERTNAME}
+# (the human-readable <descr> value).  {#CERTREFID} is used as the item key
+# to guarantee uniqueness even when two certificates share the same description.
 # OPNsense stores all system certificates (OpenVPN server, client, and other
 # certificates) in config.xml as base64-encoded <crt> blocks inside <cert>
 # elements.  This allows monitoring all certificate expirations in one place.
@@ -87,7 +89,11 @@ config_cert_discovery() {
   [ -r "$config" ] || { printf '{"data":[]}\n'; return; }
   awk '
     BEGIN { in_cert=0; in_descr=0; found=0; printf "{\"data\":[" }
-    /<cert[ >]/ { in_cert=1; in_descr=0; descr="" }
+    /<cert[ >]/ { in_cert=1; in_descr=0; descr=""; refid="" }
+    in_cert && /<refid>/ {
+      line = $0; gsub(/^[[:space:]]*<refid>/, "", line); gsub(/<\/refid>.*$/, "", line)
+      refid = line
+    }
     in_cert && /<descr>/ && !in_descr {
       in_descr=1
       line = $0; gsub(/^[[:space:]]*<descr>/, "", line)
@@ -101,42 +107,34 @@ config_cert_discovery() {
       descr = descr line
     }
     in_cert && /<\/cert>/ {
-      if (descr != "") {
+      if (refid != "" && descr != "") {
         gsub(/\\/, "\\\\", descr)
         gsub(/"/, "\\\"", descr)
         if (found > 0) printf ","
-        printf "{\"{#CERTNAME}\":\"%s\"}", descr
+        printf "{\"{#CERTREFID}\":\"%s\",\"{#CERTNAME}\":\"%s\"}", refid, descr
         found++
       }
-      in_cert=0; in_descr=0; descr=""
+      in_cert=0; in_descr=0; descr=""; refid=""
     }
     END { printf "]\n}\n" }
   ' "$config"
 }
 
-# Return days remaining for the certificate with the given description string.
-# Locates the matching <cert> block in /conf/config.xml, base64-decodes the
-# <crt> content, and delegates to _cert_days_from_pem().  Accumulates <crt>
-# content across multiple lines in case the base64 payload is wrapped.
-# Returns -9999 when the cert cannot be located, decoded, or parsed.
+# Return days remaining for the certificate with the given <refid> string.
+# Locates the matching <cert> block in /conf/config.xml by its unique <refid>,
+# base64-decodes the <crt> content, and delegates to _cert_days_from_pem().
+# Accumulates <crt> content across multiple lines in case the payload is
+# wrapped.  Returns -9999 when the cert cannot be located, decoded, or parsed.
 config_cert_days() {
-  name="$1"
-  [ -z "$name" ] && { echo -9999; return; }
+  refid="$1"
+  [ -z "$refid" ] && { echo -9999; return; }
   config="/conf/config.xml"
   [ -r "$config" ] || { echo -9999; return; }
-  b64="$(awk -v target="$name" '
-    /<cert[ >]/ { in_cert=1; in_descr=0; in_crt=0; descr=""; crt="" }
-    in_cert && /<descr>/ && !in_descr {
-      in_descr=1
-      line = $0; gsub(/^[[:space:]]*<descr>/, "", line)
-      if (index(line, "</descr>") > 0) { gsub(/<\/descr>.*$/, "", line); in_descr=0 }
-      descr = line
-    }
-    in_descr && !/<descr>/ {
-      line = $0
-      if (index(line, "</descr>") > 0) { gsub(/<\/descr>.*$/, "", line); in_descr=0 }
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
-      descr = descr line
+  b64="$(awk -v target="$refid" '
+    /<cert[ >]/ { in_cert=1; in_crt=0; matched=0; crt="" }
+    in_cert && /<refid>/ {
+      line = $0; gsub(/^[[:space:]]*<refid>/, "", line); gsub(/<\/refid>.*$/, "", line)
+      if (line == target) matched=1
     }
     in_cert && /<crt>/ && !in_crt {
       in_crt=1
@@ -152,8 +150,8 @@ config_cert_days() {
       crt = crt line
     }
     in_cert && /<\/cert>/ {
-      if (descr == target && crt != "") { print crt; exit }
-      in_cert=0; in_descr=0; in_crt=0; descr=""; crt=""
+      if (matched && crt != "") { print crt; exit }
+      in_cert=0; in_crt=0; matched=0; crt=""
     }
   ' "$config")"
   [ -z "$b64" ] && { echo -9999; return; }
