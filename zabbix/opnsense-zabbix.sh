@@ -125,12 +125,18 @@ config_cert_days() {
   config="/conf/config.xml"
   [ -r "$config" ] || { echo -9999; return; }
   b64="$(awk -v target="$name" '
-    /<cert[ >]/ { in_cert=1; in_crt=0; descr=""; crt="" }
-    in_cert && /<descr>/ {
-      line = $0
-      gsub(/^[[:space:]]*<descr>/, "", line)
-      gsub(/<\/descr>.*$/, "", line)
+    /<cert[ >]/ { in_cert=1; in_descr=0; in_crt=0; descr=""; crt="" }
+    in_cert && /<descr>/ && !in_descr {
+      in_descr=1
+      line = $0; gsub(/^[[:space:]]*<descr>/, "", line)
+      if (index(line, "</descr>") > 0) { gsub(/<\/descr>.*$/, "", line); in_descr=0 }
       descr = line
+    }
+    in_descr && !/<descr>/ {
+      line = $0
+      if (index(line, "</descr>") > 0) { gsub(/<\/descr>.*$/, "", line); in_descr=0 }
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
+      descr = descr line
     }
     in_cert && /<crt>/ && !in_crt {
       in_crt=1
@@ -147,7 +153,7 @@ config_cert_days() {
     }
     in_cert && /<\/cert>/ {
       if (descr == target && crt != "") { print crt; exit }
-      in_cert=0; in_crt=0; descr=""; crt=""
+      in_cert=0; in_descr=0; in_crt=0; descr=""; crt=""
     }
   ' "$config")"
   [ -z "$b64" ] && { echo -9999; return; }
