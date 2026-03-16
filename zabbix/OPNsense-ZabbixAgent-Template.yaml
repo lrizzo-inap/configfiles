@@ -104,7 +104,7 @@ zabbix_export:
                                              counters (excludes match, synproxy);
                                              CHANGE_PER_SECOND → rate in pps;
                                              spike trigger: avg(5m) > FLOOR AND
-                                             avg(5m) > SPIKE.FACTOR × trendavg(1w);
+                                             avg(5m) > SPIKE.FACTOR × trendavg(7d);
                                              WARNING nodata() after NODATA.TIMEOUT
 
         ROUTING
@@ -349,7 +349,7 @@ zabbix_export:
               value: pf
           triggers:
             - uuid: 420202794b01436da16f3b14096a771a
-              expression: 'avg(/OPNsense Firewall by Zabbix agent/opnsense.pf.counter.dropped,5m)>{$OPNSENSE.PF.DROPPED.RATE.FLOOR} and avg(/OPNsense Firewall by Zabbix agent/opnsense.pf.counter.dropped,5m)>{$OPNSENSE.PF.DROPPED.SPIKE.FACTOR}*trendavg(/OPNsense Firewall by Zabbix agent/opnsense.pf.counter.dropped,1w)'
+              expression: 'avg(/OPNsense Firewall by Zabbix agent/opnsense.pf.counter.dropped,5m)>{$OPNSENSE.PF.DROPPED.RATE.FLOOR} and avg(/OPNsense Firewall by Zabbix agent/opnsense.pf.counter.dropped,5m)>{$OPNSENSE.PF.DROPPED.SPIKE.FACTOR}*trendavg(/OPNsense Firewall by Zabbix agent/opnsense.pf.counter.dropped,7d)'
               name: 'PF error packet spike detected'
               priority: WARNING
               description: 'The 5-minute average PF error packet rate is more than {$OPNSENSE.PF.DROPPED.SPIKE.FACTOR}x the 7-day trend baseline and above the minimum floor of {$OPNSENSE.PF.DROPPED.RATE.FLOOR} pps. This may indicate a new attack pattern, a network anomaly, or sudden infrastructure trouble. Run pfctl -si to identify which error counter is elevated.'
