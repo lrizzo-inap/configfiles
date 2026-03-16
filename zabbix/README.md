@@ -65,7 +65,7 @@ curl https://raw.githubusercontent.com/lrizzo-inap/configfiles/refs/heads/main/z
 Set the required permissions:
 
 ```sh
-chmod 644 /usr/local/etc/zabbix_agentd.conf.d/opnsense.custom.conf
+chmod 644 /usr/local/etc/zabbix_agentd.conf.d/opnsense-custom.conf
 chmod 755 /usr/local/bin/opnsense-zabbix.sh
 ```
 
