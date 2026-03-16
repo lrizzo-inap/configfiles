@@ -77,48 +77,85 @@ openvpn_processes() {
   pgrep -f '/usr/local/sbin/openvpn' 2>/dev/null | awk 'END {print NR+0}'
 }
 
-# Emit a Zabbix LLD JSON array of OpenVPN instances whose .conf file in
-# /var/etc/openvpn/ contains an inline <cert> block.  Each entry carries
-# {#OVPN_CERT} set to the conf basename without extension (e.g. "server1",
-# "client2").  OPNsense embeds the leaf certificate directly inside the conf
-# file using OpenVPN's inline block syntax rather than separate .cert files.
-openvpn_cert_discovery() {
-  dir="/var/etc/openvpn"
-  if [ ! -d "$dir" ]; then
-    printf '{"data":[]}\n'
-    return
-  fi
-  found=0
-  printf '{"data":['
-  for f in "$dir"/server[0-9]*.conf "$dir"/client[0-9]*.conf; do
-    [ -r "$f" ] || continue
-    # Only include instances that actually have an inline certificate block.
-    grep -q '<cert>' "$f" 2>/dev/null || continue
-    name="$(basename "$f" .conf)"
-    # Skip any name that contains characters outside the safe set to avoid
-    # JSON injection or unexpected behaviour downstream.
-    case "$name" in
-      *[!a-zA-Z0-9_-]*) continue ;;
-    esac
-    [ "$found" -gt 0 ] && printf ','
-    printf '{"{#OVPN_CERT}":"%s"}' "$name"
-    found=$((found + 1))
-  done
-  printf ']}\n'
+# Emit a Zabbix LLD JSON array of all certificates found in /conf/config.xml.
+# Each entry carries {#CERTREFID} (the unique <refid> value) and {#CERTNAME}
+# (the human-readable <descr> value).  {#CERTREFID} is used as the item key
+# to guarantee uniqueness even when two certificates share the same description.
+# OPNsense stores all system certificates (OpenVPN server, client, and other
+# certificates) in config.xml as base64-encoded <crt> blocks inside <cert>
+# elements.  This allows monitoring all certificate expirations in one place.
+config_cert_discovery() {
+  config="/conf/config.xml"
+  [ -r "$config" ] || { printf '{"data":[]}\n'; return; }
+  awk '
+    BEGIN { in_cert=0; in_descr=0; found=0; printf "{\"data\":[" }
+    /<cert[ >]/ { in_cert=1; in_descr=0; descr=""; refid="" }
+    in_cert && /<refid>/ {
+      line = $0; gsub(/^[[:space:]]*<refid>/, "", line); gsub(/<\/refid>.*$/, "", line)
+      refid = line
+    }
+    in_cert && /<descr>/ && !in_descr {
+      in_descr=1
+      line = $0; gsub(/^[[:space:]]*<descr>/, "", line)
+      if (index(line, "</descr>") > 0) { gsub(/<\/descr>.*$/, "", line); in_descr=0 }
+      descr = line
+    }
+    in_descr && !/<descr>/ {
+      line = $0
+      if (index(line, "</descr>") > 0) { gsub(/<\/descr>.*$/, "", line); in_descr=0 }
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
+      descr = descr line
+    }
+    in_cert && /<\/cert>/ {
+      if (refid != "" && descr != "") {
+        gsub(/\\/, "\\\\", descr)
+        gsub(/"/, "\\\"", descr)
+        if (found > 0) printf ","
+        printf "{\"{#CERTREFID}\":\"%s\",\"{#CERTNAME}\":\"%s\"}", refid, descr
+        found++
+      }
+      in_cert=0; in_descr=0; descr=""; refid=""
+    }
+    END { printf "]\n}\n" }
+  ' "$config"
 }
 
-# Return days remaining for a given OpenVPN instance certificate.  Extracts
-# the inline <cert>...</cert> PEM block from the .conf file and delegates to
-# _cert_days_from_pem().  Returns -9999 when the conf file cannot be read or
-# the name fails the safety check.
-openvpn_cert_days() {
-  name="$1"
-  case "$name" in
-    "" | *[!a-zA-Z0-9_-]*) echo -9999; return ;;
-  esac
-  conffile="/var/etc/openvpn/${name}.conf"
-  [ -r "$conffile" ] || { echo -9999; return; }
-  awk '/<cert>/{p=1;next} /<\/cert>/{p=0} p' "$conffile" | _cert_days_from_pem
+# Return days remaining for the certificate with the given <refid> string.
+# Locates the matching <cert> block in /conf/config.xml by its unique <refid>,
+# base64-decodes the <crt> content, and delegates to _cert_days_from_pem().
+# Accumulates <crt> content across multiple lines in case the payload is
+# wrapped.  Returns -9999 when the cert cannot be located, decoded, or parsed.
+config_cert_days() {
+  refid="$1"
+  [ -z "$refid" ] && { echo -9999; return; }
+  config="/conf/config.xml"
+  [ -r "$config" ] || { echo -9999; return; }
+  b64="$(awk -v target="$refid" '
+    /<cert[ >]/ { in_cert=1; in_crt=0; matched=0; crt="" }
+    in_cert && /<refid>/ {
+      line = $0; gsub(/^[[:space:]]*<refid>/, "", line); gsub(/<\/refid>.*$/, "", line)
+      if (line == target) matched=1
+    }
+    in_cert && /<crt>/ && !in_crt {
+      in_crt=1
+      line = $0; gsub(/^[[:space:]]*<crt>/, "", line)
+      if (index(line, "</crt>") > 0) { gsub(/<\/crt>.*$/, "", line); in_crt=0 }
+      gsub(/[[:space:]]/, "", line)
+      crt = line
+    }
+    in_crt && !/<crt>/ {
+      line = $0
+      if (index(line, "</crt>") > 0) { gsub(/<\/crt>.*$/, "", line); in_crt=0 }
+      gsub(/[[:space:]]/, "", line)
+      crt = crt line
+    }
+    in_cert && /<\/cert>/ {
+      if (matched && crt != "") { print crt; exit }
+      in_cert=0; in_crt=0; matched=0; crt=""
+    }
+  ' "$config")"
+  [ -z "$b64" ] && { echo -9999; return; }
+  printf '%s' "$b64" | base64 -d 2>/dev/null | _cert_days_from_pem
 }
 
 unbound_processes() {
@@ -212,7 +249,7 @@ $data
 EOF
 }
 
-# Internal helper used by ssl_cert_days_remaining() and openvpn_cert_days().
+# Internal helper used by ssl_cert_days_remaining() and config_cert_days().
 # Reads a PEM certificate from stdin and returns the number of days until it
 # expires.  Negative values (other than -9999) mean the certificate has
 # already expired.  Returns -9999 on any parse or date conversion failure.
@@ -250,8 +287,8 @@ case "$cmd" in
 
   ipsec_established) ipsec_established ;;
   openvpn_processes) openvpn_processes ;;
-  openvpn_cert_discovery) openvpn_cert_discovery ;;
-  openvpn_cert_days) openvpn_cert_days "$@" ;;
+  cert_discovery) config_cert_discovery ;;
+  cert_days) config_cert_days "$@" ;;
 
   unbound_processes) unbound_processes ;;
   dhcp_leases) dhcp_leases ;;
