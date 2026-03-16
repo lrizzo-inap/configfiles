@@ -59,7 +59,7 @@ Configure:
 From the OPNsense shell, retrieve the files directly from GitHub and write them to the expected paths:
 
 ```sh
-curl https://raw.githubusercontent.com/lrizzo-inap/configfiles/refs/heads/main/zabbix/opnsense-custom.conf > /usr/local/etc/zabbix_agentd.conf.d/opnsense.custom.conf
+curl https://raw.githubusercontent.com/lrizzo-inap/configfiles/refs/heads/main/zabbix/opnsense-custom.conf > /usr/local/etc/zabbix_agentd.conf.d/opnsense-custom.conf
 curl https://raw.githubusercontent.com/lrizzo-inap/configfiles/refs/heads/main/zabbix/opnsense-zabbix.sh > /usr/local/bin/opnsense-zabbix.sh
 ```
 Set the required permissions:
