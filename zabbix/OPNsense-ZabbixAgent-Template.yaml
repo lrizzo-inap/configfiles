@@ -272,7 +272,7 @@ zabbix_export:
               name: 'CARP MASTER count decreased (possible failover)'
               priority: HIGH
               description: 'The number of CARP MASTER interfaces decreased, indicating this node may have demoted to BACKUP. Investigate the CARP state on both HA nodes.'
-            - uuid: aa1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+            - uuid: dbd221a2f6ba46bf8b3bf0a8f4be8d8a
               expression: 'nodata(/OPNsense Firewall by Zabbix agent/opnsense.carp.master.count,{$OPNSENSE.NODATA.TIMEOUT})=1 and nodata(/OPNsense Firewall by Zabbix agent/agent.ping,{$OPNSENSE.NODATA.TIMEOUT})=0'
               name: 'No data received for CARP MASTER count'
               priority: WARNING
@@ -292,7 +292,7 @@ zabbix_export:
               name: 'DHCP lease count is above warning threshold'
               priority: INFO
               description: 'Lease count is above the configured threshold; tune per site.'
-            - uuid: cc2b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+            - uuid: 160122b270a14d039203a7fc686a38ed
               expression: 'nodata(/OPNsense Firewall by Zabbix agent/opnsense.dhcp.leases,{$OPNSENSE.NODATA.TIMEOUT})=1 and nodata(/OPNsense Firewall by Zabbix agent/agent.ping,{$OPNSENSE.NODATA.TIMEOUT})=0'
               name: 'No data received for DHCP lease count'
               priority: WARNING
@@ -311,7 +311,7 @@ zabbix_export:
               name: 'IPsec established SA count below expected minimum'
               priority: AVERAGE
               description: 'Established IPsec SA count is below the configured threshold.'
-            - uuid: aa2b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+            - uuid: c4fa7e94cb5d47f98bbc28e76706af59
               expression: 'nodata(/OPNsense Firewall by Zabbix agent/opnsense.ipsec.established,{$OPNSENSE.NODATA.TIMEOUT})=1 and nodata(/OPNsense Firewall by Zabbix agent/agent.ping,{$OPNSENSE.NODATA.TIMEOUT})=0'
               name: 'No data received for IPsec established SA count'
               priority: WARNING
@@ -330,7 +330,7 @@ zabbix_export:
               name: 'OpenVPN process count below expected minimum'
               priority: WARNING
               description: 'Running OpenVPN process count is below the configured threshold.'
-            - uuid: bb2b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+            - uuid: 6232d0b883814834b758273a75b99703
               expression: 'nodata(/OPNsense Firewall by Zabbix agent/opnsense.openvpn.processes,{$OPNSENSE.NODATA.TIMEOUT})=1 and nodata(/OPNsense Firewall by Zabbix agent/agent.ping,{$OPNSENSE.NODATA.TIMEOUT})=0'
               name: 'No data received for OpenVPN process count'
               priority: WARNING
@@ -353,7 +353,7 @@ zabbix_export:
               name: 'PF error packet spike detected'
               priority: WARNING
               description: 'The 5-minute average PF error packet rate is more than {$OPNSENSE.PF.DROPPED.SPIKE.FACTOR}x the 7-day trend baseline and above the minimum floor of {$OPNSENSE.PF.DROPPED.RATE.FLOOR} pps. This may indicate a new attack pattern, a network anomaly, or sudden infrastructure trouble. Run pfctl -si to identify which error counter is elevated.'
-            - uuid: dd1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+            - uuid: 0a531bb404644c5aa4cdf0a06573d1c3
               expression: 'nodata(/OPNsense Firewall by Zabbix agent/opnsense.pf.counter.dropped,{$OPNSENSE.NODATA.TIMEOUT})=1 and nodata(/OPNsense Firewall by Zabbix agent/agent.ping,{$OPNSENSE.NODATA.TIMEOUT})=0'
               name: 'No data received for PF error packet rate'
               priority: WARNING
@@ -395,7 +395,7 @@ zabbix_export:
             - tag: component
               value: pf
           triggers:
-            - uuid: bb1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+            - uuid: 849074f06e88440c9c5fcd3069975e06
               expression: 'nodata(/OPNsense Firewall by Zabbix agent/opnsense.pf.states.current,{$OPNSENSE.NODATA.TIMEOUT})=1 and nodata(/OPNsense Firewall by Zabbix agent/agent.ping,{$OPNSENSE.NODATA.TIMEOUT})=0'
               name: 'No data received for PF current states'
               priority: WARNING
@@ -435,7 +435,7 @@ zabbix_export:
               name: 'PF state table exhaustion predicted'
               priority: HIGH
               description: 'Linear extrapolation of the past hour predicts the PF state table will be exhausted within the configured window. Review traffic patterns and consider raising the state table limit in System: Advanced: Firewall.'
-            - uuid: cc1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+            - uuid: 0557b3779f924d588844dd26d0a4a735
               expression: 'nodata(/OPNsense Firewall by Zabbix agent/opnsense.pf.states.percent,{$OPNSENSE.NODATA.TIMEOUT})=1 and nodata(/OPNsense Firewall by Zabbix agent/agent.ping,{$OPNSENSE.NODATA.TIMEOUT})=0'
               name: 'No data received for PF state table utilization'
               priority: WARNING
@@ -454,7 +454,7 @@ zabbix_export:
               name: 'Default route missing'
               priority: DISASTER
               description: 'The firewall has no default route.'
-            - uuid: ee1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+            - uuid: 8d718f4ff7794451953a7b28913c4cdf
               expression: 'nodata(/OPNsense Firewall by Zabbix agent/opnsense.route.default.present,{$OPNSENSE.NODATA.TIMEOUT})=1 and nodata(/OPNsense Firewall by Zabbix agent/agent.ping,{$OPNSENSE.NODATA.TIMEOUT})=0'
               name: 'No data received for default route check'
               priority: WARNING
@@ -473,7 +473,7 @@ zabbix_export:
               name: 'Unbound DNS is not running'
               priority: HIGH
               description: 'No Unbound process was found.'
-            - uuid: ff1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+            - uuid: b0b1c247354e47dea45e2bbe8e913ef2
               expression: 'nodata(/OPNsense Firewall by Zabbix agent/opnsense.unbound.processes,{$OPNSENSE.NODATA.TIMEOUT})=1 and nodata(/OPNsense Firewall by Zabbix agent/agent.ping,{$OPNSENSE.NODATA.TIMEOUT})=0'
               name: 'No data received for Unbound process count'
               priority: WARNING
@@ -491,7 +491,7 @@ zabbix_export:
             - tag: component
               value: cpu
           triggers:
-            - uuid: ee2b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+            - uuid: db912fa28ab2440192c49722149eca34
               expression: 'nodata(/OPNsense Firewall by Zabbix agent/system.cpu.util[,idle,avg1],{$OPNSENSE.NODATA.TIMEOUT})=1 and nodata(/OPNsense Firewall by Zabbix agent/agent.ping,{$OPNSENSE.NODATA.TIMEOUT})=0'
               name: 'No data received for CPU utilization'
               priority: WARNING
@@ -583,7 +583,7 @@ zabbix_export:
               name: 'Available memory is low'
               priority: WARNING
               description: 'Low available memory inside the OPNsense guest.'
-            - uuid: 0d1e2f3a4b5c6d7e8f90a1b2c3d4e5f6
+            - uuid: 7cacecf7cf044fdab39075bea2768e79
               expression: 'nodata(/OPNsense Firewall by Zabbix agent/vm.memory.size[available],{$OPNSENSE.NODATA.TIMEOUT})=1 and nodata(/OPNsense Firewall by Zabbix agent/agent.ping,{$OPNSENSE.NODATA.TIMEOUT})=0'
               name: 'No data received for available memory'
               priority: WARNING
@@ -607,7 +607,7 @@ zabbix_export:
             - tag: component
               value: ssl
           triggers:
-            - uuid: f7a8b9c0d1e24f3a4b5c6d7e8f9a0b1c
+            - uuid: ac27a63539ac405ea9a6cfc3ba04aed2
               expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)<{$OPNSENSE.SSL.CERT.HIGH} and last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)<>-9999'
               name: 'Web GUI SSL certificate expires in less than {$OPNSENSE.SSL.CERT.HIGH} days'
               priority: HIGH
@@ -618,14 +618,14 @@ zabbix_export:
               priority: WARNING
               description: 'The OPNsense web GUI SSL certificate will expire within the warning threshold. Plan renewal.'
       discovery_rules:
-        - uuid: b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7
+        - uuid: 272e660582bc44cda3bfc812506f4d34
           name: 'Certificate discovery'
           type: ZABBIX_ACTIVE
           key: opnsense.cert.discovery
           delay: 1h
           description: 'Discovers all certificates registered in /conf/config.xml. Each entry exposes {#CERTREFID} (the unique <refid> value, used as the item key) and {#CERTNAME} (the human-readable <descr> value, used for display). Using the refid as the key guarantees uniqueness even when two certificates share the same description. This covers OpenVPN server certificates, client certificates, and any other system certificates stored in OPNsense.'
           item_prototypes:
-            - uuid: c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8
+            - uuid: d42449f0c0ad4473897f0b68e16eca38
               name: '{#CERTNAME} certificate days remaining'
               type: ZABBIX_ACTIVE
               key: 'opnsense.cert.days["{#CERTREFID}"]'
@@ -637,12 +637,12 @@ zabbix_export:
                 - tag: cert
                   value: '{#CERTNAME}'
               trigger_prototypes:
-                - uuid: d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9
+                - uuid: d83370ade2a14992a54f840e003364c4
                   expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.cert.days["{#CERTREFID}"])<{$OPNSENSE.SSL.CERT.HIGH} and last(/OPNsense Firewall by Zabbix agent/opnsense.cert.days["{#CERTREFID}"])<>-9999'
                   name: '{#CERTNAME} certificate expires in less than {$OPNSENSE.SSL.CERT.HIGH} days'
                   priority: HIGH
                   description: 'Certificate {#CERTNAME} will expire within the high threshold. Renew it promptly to avoid service disruption.'
-                - uuid: e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0
+                - uuid: da272b9e25b4417eb420915b55320f9f
                   expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.cert.days["{#CERTREFID}"])<{$OPNSENSE.SSL.CERT.WARN} and last(/OPNsense Firewall by Zabbix agent/opnsense.cert.days["{#CERTREFID}"])>={$OPNSENSE.SSL.CERT.HIGH}'
                   name: '{#CERTNAME} certificate expires in less than {$OPNSENSE.SSL.CERT.WARN} days'
                   priority: WARNING
