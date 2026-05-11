@@ -622,6 +622,15 @@ zabbix_export:
                   name: '{#CERTNAME} certificate expires in less than {$OPNSENSE.SSL.CERT.WARN} days'
                   priority: WARNING
                   description: 'Certificate {#CERTNAME} will expire within the warning threshold. Plan renewal before service disruption.'
+          graph_prototypes:
+            - uuid: 780ff0e83754441fac91ba77852c1d08
+              name: '{#CERTNAME} certificate days remaining'
+              ymin_type_1: FIXED
+              graph_items:
+                - color: 274482
+                  item:
+                    host: 'OPNsense Firewall by Zabbix agent'
+                    key: 'opnsense.cert.days["{#CERTREFID}"]'
         - uuid: 0be123bbd96d4d83b9a7fd19472f8e17
           name: 'Interface discovery'
           type: ZABBIX_ACTIVE
@@ -705,6 +714,22 @@ zabbix_export:
               name: 'Interface {#IFNAME} errors or drops increased sharply'
               priority: HIGH
               description: 'A sharp increase in interface errors or drops was detected on {#IFNAME}.'
+          graph_prototypes:
+            - uuid: 93f8fc4b46bc46959b0ef3de4290207c
+              name: 'Interface {#IFNAME} traffic'
+              graph_items:
+                - sortorder: '1'
+                  color: 1A7C11
+                  drawtype: GRADIENT_LINE
+                  item:
+                    host: 'OPNsense Firewall by Zabbix agent'
+                    key: 'net.if.in["{#IFNAME}",bytes]'
+                - sortorder: '2'
+                  color: F63100
+                  drawtype: GRADIENT_LINE
+                  item:
+                    host: 'OPNsense Firewall by Zabbix agent'
+                    key: 'net.if.out["{#IFNAME}",bytes]'
         - uuid: 605c5ab08c4743f09077614f99378231
           name: 'Gateway discovery'
           type: ZABBIX_ACTIVE
@@ -777,6 +802,99 @@ zabbix_export:
                   name: 'Gateway {#GWNAME} is flapping'
                   priority: AVERAGE
                   description: 'Gateway {#GWNAME} status changed {$OPNSENSE.GW.FLAP.COUNT} or more times within {$OPNSENSE.GW.FLAP.PERIOD}, indicating an unstable upstream link. Check the DPINGER configuration and the physical or logical connection.'
+          graph_prototypes:
+            - uuid: feeba2c2f12f4430806e15c5906c7365
+              name: 'Gateway {#GWNAME} RTT'
+              ymin_type_1: FIXED
+              graph_items:
+                - color: 274482
+                  drawtype: GRADIENT_LINE
+                  item:
+                    host: 'OPNsense Firewall by Zabbix agent'
+                    key: 'opnsense.gateway.delay[{#GWNAME}]'
+            - uuid: 11d3a11a664447eead616ec4f2907e0c
+              name: 'Gateway {#GWNAME} packet loss'
+              ymin_type_1: FIXED
+              graph_items:
+                - color: F63100
+                  drawtype: GRADIENT_LINE
+                  item:
+                    host: 'OPNsense Firewall by Zabbix agent'
+                    key: 'opnsense.gateway.loss[{#GWNAME}]'
+      graphs:
+        - uuid: b5136634db38492f9039b2d043d7a8b5
+          name: 'CPU utilisation'
+          ymin_type_1: FIXED
+          graph_items:
+            - color: F63100
+              drawtype: GRADIENT_LINE
+              item:
+                host: 'OPNsense Firewall by Zabbix agent'
+                key: cpu.util.total
+        - uuid: 2964463ed024400184d79ea2af92367b
+          name: Memory
+          graph_items:
+            - sortorder: '1'
+              color: 1A7C11
+              drawtype: GRADIENT_LINE
+              item:
+                host: 'OPNsense Firewall by Zabbix agent'
+                key: 'vm.memory.size[available]'
+            - sortorder: '2'
+              color: F63100
+              drawtype: GRADIENT_LINE
+              item:
+                host: 'OPNsense Firewall by Zabbix agent'
+                key: 'vm.memory.size[used]'
+        - uuid: 1c9312ea44cb49538fa6aaf44b31cf32
+          name: Storage
+          graph_items:
+            - sortorder: '1'
+              color: 274482
+              drawtype: GRADIENT_LINE
+              item:
+                host: 'OPNsense Firewall by Zabbix agent'
+                key: 'vfs.fs.size[/,pfree]'
+            - sortorder: '2'
+              color: E59900
+              drawtype: GRADIENT_LINE
+              item:
+                host: 'OPNsense Firewall by Zabbix agent'
+                key: 'vfs.fs.size[/var,pfree]'
+        - uuid: 03156b028b4a4fa38e22b116b19c6a0c
+          name: 'PF state table'
+          ymin_type_1: FIXED
+          graph_items:
+            - sortorder: '1'
+              color: 274482
+              drawtype: GRADIENT_LINE
+              item:
+                host: 'OPNsense Firewall by Zabbix agent'
+                key: opnsense.pf.states.current
+            - sortorder: '2'
+              color: C80000
+              drawtype: DASHED_LINE
+              item:
+                host: 'OPNsense Firewall by Zabbix agent'
+                key: opnsense.pf.states.max
+        - uuid: fcc76f0517de46829c3d37c0f83a4475
+          name: 'PF error/drop packets'
+          ymin_type_1: FIXED
+          graph_items:
+            - color: F63100
+              drawtype: GRADIENT_LINE
+              item:
+                host: 'OPNsense Firewall by Zabbix agent'
+                key: opnsense.pf.counter.dropped
+        - uuid: 7bab619744dc43c99461e892df264911
+          name: 'DHCP leases'
+          ymin_type_1: FIXED
+          graph_items:
+            - color: 274482
+              drawtype: GRADIENT_LINE
+              item:
+                host: 'OPNsense Firewall by Zabbix agent'
+                key: opnsense.dhcp.leases
       tags:
         - tag: application
           value: network
