@@ -128,9 +128,8 @@ zabbix_export:
         SSL CERTIFICATE
           opnsense.ssl.cert.days           — reads /usr/local/etc/lighttpd_webgui/cert.pem;
                                              WARNING < CERT.WARN days;
-                                             HIGH < CERT.HIGH days;
-                                             negative (not -9999) = already
-                                             expired, HIGH fires;
+                                             HIGH < CERT.HIGH days (and >= 0);
+                                             DISASTER when already expired (< 0);
                                              -9999 if cert unreadable (no alert)
 
         CERTIFICATES  (LLD via opnsense.cert.discovery)
@@ -141,9 +140,8 @@ zabbix_export:
                                              certificate name is its <descr>
                                              value from config.xml;
                                              WARNING < CERT.WARN days;
-                                             HIGH < CERT.HIGH days;
-                                             negative (not -9999) = already
-                                             expired, HIGH fires;
+                                             HIGH < CERT.HIGH days (and >= 0);
+                                             DISASTER when already expired (< 0);
                                              -9999 if cert unreadable (no alert);
                                              reuses {$OPNSENSE.SSL.CERT.HIGH}
                                              and {$OPNSENSE.SSL.CERT.WARN}
@@ -607,8 +605,13 @@ zabbix_export:
             - tag: component
               value: ssl
           triggers:
+            - uuid: bf85d28e01aa47979fb0198ece92bb93
+              expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)<0 and last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)<>-9999'
+              name: 'Web GUI SSL certificate has expired'
+              priority: DISASTER
+              description: 'The OPNsense web GUI SSL certificate has expired. Browsers will show security warnings and HTTPS connections may be refused. Renew immediately.'
             - uuid: ac27a63539ac405ea9a6cfc3ba04aed2
-              expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)<{$OPNSENSE.SSL.CERT.HIGH} and last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)<>-9999'
+              expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)>=0 and last(/OPNsense Firewall by Zabbix agent/opnsense.ssl.cert.days)<{$OPNSENSE.SSL.CERT.HIGH}'
               name: 'Web GUI SSL certificate expires in less than {$OPNSENSE.SSL.CERT.HIGH} days'
               priority: HIGH
               description: 'The OPNsense web GUI SSL certificate will expire within the high threshold. Renew it promptly to avoid browser warnings and service disruption.'
@@ -637,8 +640,13 @@ zabbix_export:
                 - tag: cert
                   value: '{#CERTNAME}'
               trigger_prototypes:
+                - uuid: 6623f3947cb5434683bab181d55650fe
+                  expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.cert.days["{#CERTREFID}"])<0 and last(/OPNsense Firewall by Zabbix agent/opnsense.cert.days["{#CERTREFID}"])<>-9999'
+                  name: '{#CERTNAME} certificate has expired'
+                  priority: DISASTER
+                  description: 'Certificate {#CERTNAME} has expired. Services relying on this certificate may fail or show security warnings. Renew immediately.'
                 - uuid: d83370ade2a14992a54f840e003364c4
-                  expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.cert.days["{#CERTREFID}"])<{$OPNSENSE.SSL.CERT.HIGH} and last(/OPNsense Firewall by Zabbix agent/opnsense.cert.days["{#CERTREFID}"])<>-9999'
+                  expression: 'last(/OPNsense Firewall by Zabbix agent/opnsense.cert.days["{#CERTREFID}"])>=0 and last(/OPNsense Firewall by Zabbix agent/opnsense.cert.days["{#CERTREFID}"])<{$OPNSENSE.SSL.CERT.HIGH}'
                   name: '{#CERTNAME} certificate expires in less than {$OPNSENSE.SSL.CERT.HIGH} days'
                   priority: HIGH
                   description: 'Certificate {#CERTNAME} will expire within the high threshold. Renew it promptly to avoid service disruption.'
