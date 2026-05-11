@@ -249,7 +249,7 @@ $data
 EOF
 }
 
-# Internal helper used by ssl_cert_days_remaining() and config_cert_days().
+# Internal helper used by config_cert_days().
 # Reads a PEM certificate from stdin and returns the number of days until it
 # expires.  Negative values (other than -9999) mean the certificate has
 # already expired.  Returns -9999 on any parse or date conversion failure.
@@ -260,14 +260,6 @@ _cert_days_from_pem() {
   [ -z "$end_epoch" ] && { echo -9999; return; }
   now_epoch="$(date +%s)"
   echo $(( (end_epoch - now_epoch) / 86400 ))
-}
-
-# Return days remaining for the web GUI certificate.  Reads the PEM file
-# directly from disk and delegates to _cert_days_from_pem().
-ssl_cert_days_remaining() {
-  certfile="${1:-/usr/local/etc/lighttpd_webgui/cert.pem}"
-  [ -r "$certfile" ] || { echo -9999; return; }
-  _cert_days_from_pem < "$certfile"
 }
 
 cmd="$1"
@@ -300,7 +292,6 @@ case "$cmd" in
   gateway_discovery) gateway_discovery ;;
   gateway_metric) gateway_metric "$@" ;;
 
-  ssl_cert_days_remaining) ssl_cert_days_remaining "$@" ;;
   *)
     echo "ZBX_NOTSUPPORTED"
     exit 1

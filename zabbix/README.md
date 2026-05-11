@@ -328,20 +328,25 @@ Counts `lease { }` blocks in `/var/dhcpd/var/db/dhcpd.leases`. Includes both act
 
 ---
 
-### SSL Certificate
+### Certificates (LLD)
+
+All certificates registered in `/conf/config.xml` are auto-discovered via `opnsense.cert.discovery`. This covers the web GUI certificate, OpenVPN server and client certificates, CA certificates, and any other system certificates stored in OPNsense. Each discovered certificate is identified by its unique `<refid>` value (`{#CERTREFID}`) and displayed using its human-readable `<descr>` value (`{#CERTNAME}`).
+
+Per discovered certificate `{#CERTNAME}` (keyed by `{#CERTREFID}`):
 
 | Item | Key | Poll | Trigger | Condition |
 |---|---|---|---|---|
-| Web GUI SSL certificate days remaining | `opnsense.ssl.cert.days` | 1 h | Expires soon (HIGH) | `last < {$OPNSENSE.SSL.CERT.HIGH}` and `last >= 0` → **HIGH** |
-| | | | Expires soon (WARNING) | `last < {$OPNSENSE.SSL.CERT.WARN}` and `last >= HIGH` → **WARNING** |
+| `{#CERTNAME}` certificate days remaining | `opnsense.cert.days["{#CERTREFID}"]` | 1 h | Expired (DISASTER) | `last < 0` and `last <> -9999` → **DISASTER** |
+| | | | Expires soon (HIGH) | `last >= 0` and `last < {$OPNSENSE.SSL.CERT.HIGH}` → **HIGH** |
+| | | | Expires soon (WARNING) | `last < {$OPNSENSE.SSL.CERT.WARN}` and `last >= {$OPNSENSE.SSL.CERT.HIGH}` → **WARNING** |
 
-Reads `/var/etc/cert.pem` (OPNsense web GUI certificate) with `openssl x509 -enddate` and returns days remaining as an integer. Returns `-1` if the file is unreadable or the certificate is malformed; the `>= 0` guard in the trigger suppresses alerts in that case.
+Returns days remaining as an integer. Returns `-9999` if the certificate cannot be located in config.xml or its base64 payload cannot be decoded; no alert is raised for that value.
 
 **Macros:**
 
 | Macro | Default | Notes |
 |---|---|---|
-| `{$OPNSENSE.SSL.CERT.HIGH}` | `14` days | Fires HIGH when fewer than this many days remain |
+| `{$OPNSENSE.SSL.CERT.HIGH}` | `14` days | Fires HIGH when fewer than this many days remain (and cert not yet expired) |
 | `{$OPNSENSE.SSL.CERT.WARN}` | `30` days | Fires WARNING when fewer than this many days remain (and above HIGH threshold) |
 
 ---
