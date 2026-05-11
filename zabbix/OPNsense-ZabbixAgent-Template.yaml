@@ -599,6 +599,7 @@ zabbix_export:
               type: ZABBIX_ACTIVE
               key: 'opnsense.cert.days["{#CERTREFID}"]'
               delay: 1h
+              value_type: FLOAT
               description: 'Days until the certificate {#CERTNAME} expires. The certificate is located in /conf/config.xml by its unique <refid> ({#CERTREFID}) and its expiry is determined by base64-decoding the <crt> field. Negative values other than -9999 mean the certificate has already expired. Returns -9999 if the certificate cannot be located or decoded (no alert is raised for that value).'
               tags:
                 - tag: component
