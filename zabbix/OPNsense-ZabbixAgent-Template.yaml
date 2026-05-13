@@ -627,7 +627,7 @@ zabbix_export:
               name: '{#CERTNAME} certificate days remaining'
               ymin_type_1: FIXED
               graph_items:
-                - color: 274482
+                - color: '274482'
                   item:
                     host: 'OPNsense Firewall by Zabbix agent'
                     key: 'opnsense.cert.days["{#CERTREFID}"]'
@@ -807,7 +807,7 @@ zabbix_export:
               name: 'Gateway {#GWNAME} RTT'
               ymin_type_1: FIXED
               graph_items:
-                - color: 274482
+                - color: '274482'
                   drawtype: GRADIENT_LINE
                   item:
                     host: 'OPNsense Firewall by Zabbix agent'
@@ -1085,7 +1085,7 @@ zabbix_export:
       name: Storage
       graph_items:
         - sortorder: '1'
-          color: 274482
+          color: '274482'
           drawtype: GRADIENT_LINE
           item:
             host: 'OPNsense Firewall by Zabbix agent'
@@ -1101,7 +1101,7 @@ zabbix_export:
       ymin_type_1: FIXED
       graph_items:
         - sortorder: '1'
-          color: 274482
+          color: '274482'
           drawtype: GRADIENT_LINE
           item:
             host: 'OPNsense Firewall by Zabbix agent'
@@ -1125,7 +1125,7 @@ zabbix_export:
       name: 'DHCP leases'
       ymin_type_1: FIXED
       graph_items:
-        - color: 274482
+        - color: '274482'
           drawtype: GRADIENT_LINE
           item:
             host: 'OPNsense Firewall by Zabbix agent'
