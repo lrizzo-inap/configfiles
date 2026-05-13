@@ -821,80 +821,144 @@ zabbix_export:
                   item:
                     host: 'OPNsense Firewall by Zabbix agent'
                     key: 'opnsense.gateway.loss[{#GWNAME}]'
-      graphs:
-        - uuid: b5136634db38492f9039b2d043d7a8b5
-          name: 'CPU utilisation'
-          ymin_type_1: FIXED
-          graph_items:
-            - color: F63100
-              drawtype: GRADIENT_LINE
-              item:
-                host: 'OPNsense Firewall by Zabbix agent'
-                key: cpu.util.total
-        - uuid: 2964463ed024400184d79ea2af92367b
-          name: Memory
-          graph_items:
-            - sortorder: '1'
-              color: 1A7C11
-              drawtype: GRADIENT_LINE
-              item:
-                host: 'OPNsense Firewall by Zabbix agent'
-                key: 'vm.memory.size[available]'
-            - sortorder: '2'
-              color: F63100
-              drawtype: GRADIENT_LINE
-              item:
-                host: 'OPNsense Firewall by Zabbix agent'
-                key: 'vm.memory.size[used]'
-        - uuid: 1c9312ea44cb49538fa6aaf44b31cf32
-          name: Storage
-          graph_items:
-            - sortorder: '1'
-              color: 274482
-              drawtype: GRADIENT_LINE
-              item:
-                host: 'OPNsense Firewall by Zabbix agent'
-                key: 'vfs.fs.size[/,pfree]'
-            - sortorder: '2'
-              color: E59900
-              drawtype: GRADIENT_LINE
-              item:
-                host: 'OPNsense Firewall by Zabbix agent'
-                key: 'vfs.fs.size[/var,pfree]'
-        - uuid: 03156b028b4a4fa38e22b116b19c6a0c
-          name: 'PF state table'
-          ymin_type_1: FIXED
-          graph_items:
-            - sortorder: '1'
-              color: 274482
-              drawtype: GRADIENT_LINE
-              item:
-                host: 'OPNsense Firewall by Zabbix agent'
-                key: opnsense.pf.states.current
-            - sortorder: '2'
-              color: C80000
-              drawtype: DASHED_LINE
-              item:
-                host: 'OPNsense Firewall by Zabbix agent'
-                key: opnsense.pf.states.max
-        - uuid: fcc76f0517de46829c3d37c0f83a4475
-          name: 'PF error/drop packets'
-          ymin_type_1: FIXED
-          graph_items:
-            - color: F63100
-              drawtype: GRADIENT_LINE
-              item:
-                host: 'OPNsense Firewall by Zabbix agent'
-                key: opnsense.pf.counter.dropped
-        - uuid: 7bab619744dc43c99461e892df264911
-          name: 'DHCP leases'
-          ymin_type_1: FIXED
-          graph_items:
-            - color: 274482
-              drawtype: GRADIENT_LINE
-              item:
-                host: 'OPNsense Firewall by Zabbix agent'
-                key: opnsense.dhcp.leases
+      dashboards:
+        - uuid: cb8e0025a660436abe63951a4f6da8e8
+          name: 'OPNsense Overview'
+          pages:
+            - widgets:
+                - type: graph
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: GRAPH
+                      name: graphid.0
+                      value:
+                        host: 'OPNsense Firewall by Zabbix agent'
+                        name: 'CPU utilisation'
+                    - type: STRING
+                      name: reference
+                      value: CPUGT
+                - type: graph
+                  x: '36'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: GRAPH
+                      name: graphid.0
+                      value:
+                        host: 'OPNsense Firewall by Zabbix agent'
+                        name: Memory
+                    - type: STRING
+                      name: reference
+                      value: MEMGT
+                - type: graph
+                  y: '5'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: GRAPH
+                      name: graphid.0
+                      value:
+                        host: 'OPNsense Firewall by Zabbix agent'
+                        name: Storage
+                    - type: STRING
+                      name: reference
+                      value: STOGT
+                - type: graph
+                  x: '36'
+                  y: '5'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: GRAPH
+                      name: graphid.0
+                      value:
+                        host: 'OPNsense Firewall by Zabbix agent'
+                        name: 'PF state table'
+                    - type: STRING
+                      name: reference
+                      value: PFSTG
+                - type: graph
+                  y: '10'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: GRAPH
+                      name: graphid.0
+                      value:
+                        host: 'OPNsense Firewall by Zabbix agent'
+                        name: 'PF error/drop packets'
+                    - type: STRING
+                      name: reference
+                      value: PFERR
+                - type: graph
+                  x: '36'
+                  y: '10'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: GRAPH
+                      name: graphid.0
+                      value:
+                        host: 'OPNsense Firewall by Zabbix agent'
+                        name: 'DHCP leases'
+                    - type: STRING
+                      name: reference
+                      value: DHCPG
+        - uuid: 26dfebbafd8140ee878ca8fe3b7fb1ce
+          name: 'Interface Traffic'
+          pages:
+            - widgets:
+                - type: graphprototype
+                  width: '71'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: columns
+                      value: '1'
+                    - type: GRAPH_PROTOTYPE
+                      name: graphid.0
+                      value:
+                        host: 'OPNsense Firewall by Zabbix agent'
+                        name: 'Interface {#IFNAME} traffic'
+                    - type: STRING
+                      name: reference
+                      value: IFTRG
+        - uuid: bdbc2e05b4e74b57836a697049e800b8
+          name: 'Gateway Performance'
+          pages:
+            - widgets:
+                - type: graphprototype
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: columns
+                      value: '1'
+                    - type: GRAPH_PROTOTYPE
+                      name: graphid.0
+                      value:
+                        host: 'OPNsense Firewall by Zabbix agent'
+                        name: 'Gateway {#GWNAME} RTT'
+                    - type: STRING
+                      name: reference
+                      value: GWRTT
+                - type: graphprototype
+                  x: '36'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: columns
+                      value: '1'
+                    - type: GRAPH_PROTOTYPE
+                      name: graphid.0
+                      value:
+                        host: 'OPNsense Firewall by Zabbix agent'
+                        name: 'Gateway {#GWNAME} packet loss'
+                    - type: STRING
+                      name: reference
+                      value: GWLSS
       tags:
         - tag: application
           value: network
@@ -992,3 +1056,77 @@ zabbix_export:
         - macro: '{$OPNSENSE.VPN.IPSEC.MIN}'
           value: '0'
           description: 'Minimum expected number of established IPsec SAs. Set per host.'
+  graphs:
+    - uuid: b5136634db38492f9039b2d043d7a8b5
+      name: 'CPU utilisation'
+      ymin_type_1: FIXED
+      graph_items:
+        - color: F63100
+          drawtype: GRADIENT_LINE
+          item:
+            host: 'OPNsense Firewall by Zabbix agent'
+            key: cpu.util.total
+    - uuid: 2964463ed024400184d79ea2af92367b
+      name: Memory
+      graph_items:
+        - sortorder: '1'
+          color: 1A7C11
+          drawtype: GRADIENT_LINE
+          item:
+            host: 'OPNsense Firewall by Zabbix agent'
+            key: 'vm.memory.size[available]'
+        - sortorder: '2'
+          color: F63100
+          drawtype: GRADIENT_LINE
+          item:
+            host: 'OPNsense Firewall by Zabbix agent'
+            key: 'vm.memory.size[used]'
+    - uuid: 1c9312ea44cb49538fa6aaf44b31cf32
+      name: Storage
+      graph_items:
+        - sortorder: '1'
+          color: 274482
+          drawtype: GRADIENT_LINE
+          item:
+            host: 'OPNsense Firewall by Zabbix agent'
+            key: 'vfs.fs.size[/,pfree]'
+        - sortorder: '2'
+          color: E59900
+          drawtype: GRADIENT_LINE
+          item:
+            host: 'OPNsense Firewall by Zabbix agent'
+            key: 'vfs.fs.size[/var,pfree]'
+    - uuid: 03156b028b4a4fa38e22b116b19c6a0c
+      name: 'PF state table'
+      ymin_type_1: FIXED
+      graph_items:
+        - sortorder: '1'
+          color: 274482
+          drawtype: GRADIENT_LINE
+          item:
+            host: 'OPNsense Firewall by Zabbix agent'
+            key: opnsense.pf.states.current
+        - sortorder: '2'
+          color: C80000
+          drawtype: DASHED_LINE
+          item:
+            host: 'OPNsense Firewall by Zabbix agent'
+            key: opnsense.pf.states.max
+    - uuid: fcc76f0517de46829c3d37c0f83a4475
+      name: 'PF error/drop packets'
+      ymin_type_1: FIXED
+      graph_items:
+        - color: F63100
+          drawtype: GRADIENT_LINE
+          item:
+            host: 'OPNsense Firewall by Zabbix agent'
+            key: opnsense.pf.counter.dropped
+    - uuid: 7bab619744dc43c99461e892df264911
+      name: 'DHCP leases'
+      ymin_type_1: FIXED
+      graph_items:
+        - color: 274482
+          drawtype: GRADIENT_LINE
+          item:
+            host: 'OPNsense Firewall by Zabbix agent'
+            key: opnsense.dhcp.leases
