@@ -625,7 +625,6 @@ zabbix_export:
           graph_prototypes:
             - uuid: 780ff0e83754441fac91ba77852c1d08
               name: '{#CERTNAME} certificate days remaining'
-              ymin_type_1: FIXED
               graph_items:
                 - color: '274482'
                   item:
@@ -648,6 +647,10 @@ zabbix_export:
               type: ZABBIX_ACTIVE
               key: 'net.if.in["{#IFNAME}",bytes]'
               units: Bps
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
               tags:
                 - tag: component
                   value: interface
@@ -658,6 +661,10 @@ zabbix_export:
               type: ZABBIX_ACTIVE
               key: 'net.if.out["{#IFNAME}",bytes]'
               units: Bps
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
               tags:
                 - tag: component
                   value: interface
